@@ -267,7 +267,103 @@ Proposed meaning for "<word>": <proposed meaning>. Confirm? (yes/no · כן/לא
 Added to VOCAB.md: "<word>" — <meaning>.
 ```
 
-<!-- ==========================================================================
-     Step 5 — Hebrew meeting summary  (added in T6)
-     Agent writes Hebrew summary (סיכום / החלטות / משימות / מעקבים) to _summary.md.
-     ========================================================================== -->
+## Step 5 — Hebrew meeting summary
+
+This is the final step of the flow. After the word-by-word pass ends (Step 3
+step 6), write a **Hebrew** summary of the meeting and save it as a Markdown file.
+
+**This is agent-generated Hebrew prose, NOT a script.** There is no helper to call
+for the summary — you read the transcript segments and compose the Hebrew text
+yourself. Only the output *path* reuses the deterministic naming below.
+
+### Input
+
+The summary is built from the **same `result["segments"]`** you transcribed in
+Step 1 (each segment is `{speaker, text, start, end}`, `text` in Hebrew). Read the
+whole transcript — the segment texts in chronological order are the meeting
+content. Do not invent facts that are not in the transcript; if something is
+unclear, leave it out or note it under **מעקבים**.
+
+### Output file location & naming
+
+Write the summary to the **`_summary.md` sibling** of the transcript file — the
+identical `<stem>` and the identical `run_timestamp` from Step 1, with the
+`_summary.md` suffix instead of `_transcript.md`. So the pair is, e.g.:
+
+```
+output/hebrew-transcript-review/audio_sample_1min_20260531-231012_transcript.md
+output/hebrew-transcript-review/audio_sample_1min_20260531-231012_summary.md
+```
+
+Build the path deterministically from the **same `audio_path` and the same
+`run_timestamp`** so the transcript and summary always pair up. Reuse the
+renderer's path logic and only swap the suffix — from the **repo root**:
+
+```bash
+uv run python -c '
+import importlib.util, pathlib, sys
+p = pathlib.Path(".claude/skills/hebrew-transcript-review/scripts/render_transcript.py")
+spec = importlib.util.spec_from_file_location("render_transcript", p)
+rt = importlib.util.module_from_spec(spec); spec.loader.exec_module(rt)
+tpath = rt.output_path(sys.argv[1], sys.argv[2])          # ..._transcript.md
+spath = tpath.with_name(tpath.name.replace("_transcript.md", "_summary.md"))
+print(spath)
+' "<audio_path>" "<run_timestamp>"
+```
+
+Create `output/hebrew-transcript-review/` if it is missing (the renderer in Step 2
+already creates it; if you somehow reach here without it, `mkdir -p` it). The
+`output/` dir is git-ignored — these are run artifacts, not committed source.
+
+### Required content — four Hebrew sections, always present, in this order
+
+The summary file MUST contain these four clearly-labeled Hebrew sections, **in this
+exact order with these exact Hebrew headings**:
+
+1. **`## סיכום`** — overview: 2–5 sentences on what the meeting was about and the
+   main points.
+2. **`## החלטות`** — decisions made during the meeting (bulleted).
+3. **`## משימות`** — action items / TODOs (bulleted; name the owner if the
+   transcript identifies one).
+4. **`## מעקבים`** — follow-ups: open questions and items to revisit later
+   (bulleted).
+
+**Every section is always present.** If a section has no items, do NOT omit its
+heading — write a short Hebrew placeholder line under it instead, e.g. `אין` or a
+fuller `אין החלטות שתועדו` / `אין משימות שתועדו` / `אין מעקבים`. A reviewer must be
+able to find all four headings (`סיכום`, `החלטות`, `משימות`, `מעקבים`) in the file.
+
+### Output file skeleton (fill the Hebrew prose; wrap RTL like the transcript)
+
+Write the file with this exact structure, wrapped in `<div dir="rtl"> … </div>`
+(the reliable RTL mechanism for rendered Markdown — the CLI does not render RTL, so
+the `.md` file is the deliverable). Substitute `<audio basename>` and
+`<run_timestamp>` from this run and replace each `<...>` with your Hebrew prose:
+
+```markdown
+<!-- summary for: <audio basename> · generated <run_timestamp> -->
+<div dir="rtl">
+
+# סיכום פגישה
+
+## סיכום
+<2–5 משפטים בעברית: על מה הייתה הפגישה ועיקרי הדברים>
+
+## החלטות
+- <החלטה 1>
+- <החלטה 2>
+
+## משימות
+- <מטלה — אחראי אם ידוע>
+
+## מעקבים
+- <נושא פתוח / לבירור בהמשך>
+
+</div>
+```
+
+(If a section is empty, replace its bullets with a single Hebrew placeholder line
+such as `אין החלטות שתועדו` — the heading stays.)
+
+After writing the file, tell the user the summary path (and the transcript path
+from Step 2) so they can open both. The flow is now complete.
