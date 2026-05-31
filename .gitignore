@@ -16,5 +16,8 @@ resource/audio smaples/
 *.m4a
 *.wav
 
+# Generated run artifacts (rendered transcripts / summaries)
+output/
+
 # Env
 .env
