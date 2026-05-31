@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sprint Board — Preview</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --bg-grad-1: #0c1426;
+    --bg-grad-2: #0a1020;
+    --panel: #121b2f;
+    --panel-2: #0f1828;
+    --card: #182344;
+    --card-hover: #1e2a52;
+    --border: #243151;
+    --border-soft: #1a2440;
+    --text: #e6ebf4;
+    --text-dim: #b6c1d8;
+    --muted: #7d8aa6;
+    --muted-2: #5f6c87;
+
+    --pending: #94a3b8;
+    --progress: #3b82f6;
+    --done: #10b981;
+    --blocked: #ef4444;
+
+    --pending-bg: rgba(148, 163, 184, 0.10);
+    --progress-bg: rgba(59, 130, 246, 0.12);
+    --done-bg: rgba(16, 185, 129, 0.12);
+    --blocked-bg: rgba(239, 68, 68, 0.12);
+
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 8px 24px rgba(0,0,0,0.25);
+    --shadow-hover: 0 2px 4px rgba(0,0,0,0.4), 0 16px 36px rgba(0,0,0,0.32);
+
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    font-family: var(--font-sans);
+    color: var(--text);
+    background:
+      radial-gradient(1200px 600px at 12% -10%, rgba(59,130,246,0.10), transparent 60%),
+      radial-gradient(900px 500px at 110% 0%, rgba(16,185,129,0.08), transparent 55%),
+      linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .wrap {
+    max-width: 1480px;
+    margin: 0 auto;
+    padding: 32px 28px 48px;
+  }
+
+  /* Header */
+  header.board-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 20px 24px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+    box-shadow: var(--shadow);
+    margin-bottom: 28px;
+  }
+  .h-left { min-width: 0; }
+  .h-eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .h-eyebrow .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--done);
+    box-shadow: 0 0 0 4px rgba(16,185,129,0.16);
+  }
+  .h-title {
+    font-size: 28px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+  }
+  .h-goal {
+    font-size: 15px;
+    color: var(--text-dim);
+    max-width: 80ch;
+  }
+  .h-right {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+    min-width: 320px;
+  }
+  .h-meta {
+    display: flex;
+    gap: 22px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .h-meta b {
+    color: var(--text-dim);
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .progress {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .progress-label .pct { color: var(--text); font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 13px; }
+  .progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--progress), var(--done));
+    border-radius: 999px;
+    transition: width 600ms cubic-bezier(.2,.7,.2,1);
+  }
+
+  /* Board */
+  .board {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px;
+  }
+  @media (max-width: 1100px) {
+    .board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 640px) {
+    .board { grid-template-columns: 1fr; }
+  }
+
+  .col {
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    min-height: 320px;
+    overflow: hidden;
+  }
+  .col-head {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+  }
+  .col-head::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    height: 3px;
+    background: var(--col-accent, var(--muted));
+    opacity: 0.85;
+  }
+  .col-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+  .col-title .swatch {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--col-accent, var(--muted));
+  }
+  .col-count {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-soft);
+    padding: 2px 8px;
+    border-radius: 999px;
+    min-width: 24px;
+    text-align: center;
+  }
+  .col-body {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+  }
+  .col-empty {
+    color: var(--muted-2);
+    font-size: 13px;
+    font-style: italic;
+    text-align: center;
+    padding: 24px 8px;
+    border: 1px dashed var(--border-soft);
+    border-radius: var(--radius-sm);
+  }
+
+  /* Cards */
+  .card {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 13px 12px;
+    box-shadow: var(--shadow);
+    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+    background: var(--card-hover);
+  }
+  .card.is-blocked::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 8px; bottom: 8px;
+    width: 3px;
+    background: var(--blocked);
+    border-radius: 0 3px 3px 0;
+  }
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .tid {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-soft);
+    padding: 2px 7px;
+    border-radius: 6px;
+    letter-spacing: 0.04em;
+  }
+  .assignee {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border-soft);
+    border-radius: 999px;
+    padding: 2px 9px 2px 3px;
+    max-width: 60%;
+    overflow: hidden;
+  }
+  .avatar {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+    letter-spacing: 0;
+  }
+  .assignee-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .desc {
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--text);
+    margin: 2px 0 8px;
+  }
+  .meta-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .meta-row .label {
+    color: var(--muted-2);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-size: 10px;
+    margin-right: 4px;
+  }
+  .meta-row p { margin: 0; }
+  .blocked-tag {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--blocked);
+    background: var(--blocked-bg);
+    border: 1px solid rgba(239,68,68,0.35);
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 700;
+  }
+
+  /* Footer */
+  footer.board-footer {
+    margin-top: 28px;
+    text-align: center;
+    color: var(--muted-2);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+  }
+  footer.board-footer code {
+    font-family: var(--font-mono);
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.04);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border-soft);
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="board-header">
+      <div class="h-left">
+        <div class="h-eyebrow"><span class="dot"></span><span id="eyebrow">Active sprint</span></div>
+        <h1 class="h-title" id="project-name">Project</h1>
+        <p class="h-goal" id="goal">Goal</p>
+      </div>
+      <div class="h-right">
+        <div class="h-meta">
+          <span>Sprint<b id="sprint-folder">—</b></span>
+          <span>Started<b id="started">—</b></span>
+          <span>Tasks<b id="task-count">0</b></span>
+        </div>
+        <div class="progress">
+          <div class="progress-label">
+            <span>Progress</span>
+            <span class="pct" id="pct">0%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="pfill" style="width:0%"></div></div>
+        </div>
+      </div>
+    </header>
+
+    <div class="board" id="board"></div>
+
+    <footer class="board-footer">
+      Generated from <code>sprints/.active</code> — refresh by running <code>python3 .claude/scripts/board.py</code>
+    </footer>
+  </div>
+
+<script>
+  // ---- Embedded sprint data (board.py replaces the sentinel below) ----
+  const SPRINT = /*__SPRINT_DATA__*/ null;
+
+  // ---- Rendering ----
+  const COLUMNS = [
+    { key: "pending",     title: "Pending",     accent: "var(--pending)" },
+    { key: "in_progress", title: "In Progress", accent: "var(--progress)" },
+    { key: "done",        title: "Done",        accent: "var(--done)" },
+    { key: "blocked",     title: "Blocked",     accent: "var(--blocked)" }
+  ];
+
+  function hueFor(name) {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return h % 360;
+  }
+  function avatarStyle(name) {
+    const hue = hueFor(name);
+    return `background: hsl(${hue} 55% 32%); color: hsl(${hue} 90% 88%); border: 1px solid hsl(${hue} 50% 42% / 0.7);`;
+  }
+  function initialOf(name) {
+    return (name || "?").trim().charAt(0).toUpperCase();
+  }
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function cardHTML(task) {
+    const assignee = task.assignee || "unassigned";
+    const role = SPRINT.team && SPRINT.team[assignee] ? SPRINT.team[assignee] : "";
+    const blocked = task.status === "blocked";
+    const accept = task.acceptance
+      ? `<p><span class="label">Acceptance</span>${escapeHtml(task.acceptance)}</p>` : "";
+    const notes = task.notes
+      ? `<p><span class="label">Notes</span>${escapeHtml(task.notes)}</p>` : "";
+    const blockedTag = blocked ? `<span class="blocked-tag">Blocked</span>` : "";
+    return `
+      <article class="card${blocked ? " is-blocked" : ""}">
+        <div class="card-top">
+          <span class="tid">${escapeHtml(task.id)}</span>
+          <span class="assignee" title="${escapeHtml(role)}">
+            <span class="avatar" style="${avatarStyle(assignee)}">${escapeHtml(initialOf(assignee))}</span>
+            <span class="assignee-name">@${escapeHtml(assignee)}</span>
+          </span>
+        </div>
+        <div class="desc">${escapeHtml(task.desc)}</div>
+        <div class="meta-row">${accept}${notes}</div>
+        ${blockedTag}
+      </article>
+    `;
+  }
+
+  function render() {
+    const hasSprint = !!SPRINT.folder;
+    document.getElementById("project-name").textContent = SPRINT.project_name || "Project";
+    document.getElementById("goal").textContent = hasSprint
+      ? (SPRINT.goal || "")
+      : "No active sprint — start one with /sprint-start \"<goal>\".";
+    document.getElementById("eyebrow").textContent = hasSprint ? "Active sprint" : "Idle";
+    document.getElementById("sprint-folder").textContent = " " + (SPRINT.folder || "—");
+    document.getElementById("started").textContent = " " + (SPRINT.started || "—");
+    document.getElementById("task-count").textContent = " " + SPRINT.tasks.length;
+
+    const done = SPRINT.tasks.filter(t => t.status === "done").length;
+    const total = SPRINT.tasks.length || 1;
+    const pct = Math.round((done / total) * 100);
+    document.getElementById("pct").textContent = pct + "%";
+    requestAnimationFrame(() => {
+      document.getElementById("pfill").style.width = pct + "%";
+    });
+
+    const board = document.getElementById("board");
+    board.innerHTML = COLUMNS.map(col => {
+      const items = SPRINT.tasks.filter(t => t.status === col.key);
+      const body = items.length
+        ? items.map(cardHTML).join("")
+        : `<div class="col-empty">No tasks</div>`;
+      return `
+        <section class="col" style="--col-accent: ${col.accent}">
+          <header class="col-head">
+            <div class="col-title"><span class="swatch"></span>${col.title}</div>
+            <span class="col-count">${items.length}</span>
+          </header>
+          <div class="col-body">${body}</div>
+        </section>
+      `;
+    }).join("");
+  }
+
+  render();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+"""FastMCP entry point for {{INVOCATION_NAME}}."""
+from __future__ import annotations
+
+from fastmcp import FastMCP
+
+from .tools import register_tools
+
+mcp = FastMCP("{{INVOCATION_NAME}}")
+register_tools(mcp)
+
+
+if __name__ == "__main__":
+    mcp.run()

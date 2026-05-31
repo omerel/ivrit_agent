@@ -1,0 +1,7 @@
+{
+  "{{INVOCATION_NAME}}": {
+    "command": "python",
+    "args": ["-m", "mcp_code.mcp_service_{{NAME}}.server"],
+    "env": {}
+  }
+}

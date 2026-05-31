@@ -1,0 +1,156 @@
+# ivrit_agent — Team Workflow
+
+> (no description provided)
+
+This document is the canonical workflow guide for the **ivrit_agent** team. Every agent reads this before doing any work. The user (the **guide**) directs the project; the **Orchestrator** (you, the main Claude session) coordinates execution; specialist subagents do focused work and log their results.
+
+---
+
+## 1. Workflow Rules
+
+### Sprints
+A **sprint** is a goal-oriented work unit with no fixed length. The guide states a goal; the sprint runs **plan → execute → review → close** and ends when the goal is met.
+
+### Slash commands
+- `/sprint-start <goal>` — Create a new sprint, dispatch the Planner, present the plan to the guide for approval.
+- `/sprint-status` — Print current sprint progress (% done, current task, blockers, last 3 log entries).
+- `/sprint-close` — Dispatch the Reviewer, write the Sprint Closeout in `plan.md`. Refuse if any task is `pending` or `in_progress`.
+- `/sprint-resume` — Read `sprints/.active` (or most recent folder by mtime), summarize state, ask the guide whether to continue.
+- `/quick-fix "<description>" [@nickname]` — Make a small, documented change without a full sprint. One agent edits, commits on the current branch, and writes a record under `fixes/`.
+
+### Approval gates
+Two points where the guide is in control:
+1. **After plan written** — guide reviews `plan.md`, requests changes, or approves.
+2. **After Sprint Closeout written** — guide accepts close, or rejects (sprint reopens).
+
+Everything between these two gates runs autonomously unless the guide interjects in natural language.
+
+### Active-sprint tracking
+A single marker file `sprints/.active` contains the folder name of the current open sprint (e.g., `2026-05-01_build-login-flow`). `/sprint-start` writes it; `/sprint-close` deletes it on PASS. The Orchestrator reads it to know which `plan.md` and `work-logs/` are live.
+
+---
+
+## 2. Agent Dispatch Protocol (Orchestrator's responsibility)
+
+The Orchestrator is the main Claude session reading this file. The Orchestrator is **not** a dispatchable subagent — every other team member is.
+
+### Reading the team
+At sprint start, read `.claude/team.md` to know who's on the team and what each nickname maps to.
+
+### Hybrid routing
+- The Planner pre-assigns specialists in `plan.md` (the default path).
+- The Orchestrator MAY re-route a task at execution time if reality differs from the plan.
+- If you re-route, you MUST append a `Routing override` note to `plan.md` explaining what you changed and why.
+- The plan is a recommendation, not a contract.
+
+### Validation before dispatch
+Before dispatching the first task in a plan, validate every `@nickname` assignment against `.claude/team.md`. If any assignment references an unknown nickname, send the plan back to the Planner with the list of valid nicknames; do not dispatch.
+
+### Work-log enforcement
+Every dispatched specialist must append to `sprints/<active>/work-logs/<nickname>.md` before returning. If a specialist returns without updating its log, re-dispatch the same task with an explicit "you must append to your work-log" reminder.
+
+### Status updates
+After each specialist returns, update the task status in `plan.md` to `done` or `blocked` based on the specialist's report. If `blocked`, surface the block to the guide rather than guessing — the guide decides re-route vs. swap specialist vs. abandon.
+
+---
+
+## 3. I/O Contract (every agent must follow)
+
+1. **Read context:** `CLAUDE.md`, `.claude/team.md`, the active `plan.md`, and any relevant `resource/` files.
+2. **Do the assigned task** using your designated skills.
+3. **Append a timestamped entry** to `sprints/<active>/work-logs/<nickname>.md` covering: timestamp, task ID, what was attempted, what was done, files touched, blockers.
+4. **Return** a one-paragraph summary to the Orchestrator.
+
+---
+
+## 4. Resource Rule
+
+`resource/` is a flat folder of user-curated knowledge (PDFs, markdown notes, datasets, links). Every agent MUST:
+1. List `resource/` first (do not read the entire folder verbatim).
+2. Read only files relevant to the current task.
+
+The guide owns this folder; agents only read from it.
+
+---
+
+## 5. Sprint File Conventions
+
+### Folder naming
+`sprints/<YYYY-MM-DD>_<slug>/` — date is the date the sprint started. Slug is derived from the goal: lowercase, alphanumeric and hyphens only, max 40 characters. If a slug collides with an existing sprint folder on the same day, append `-2`, `-3`, etc.
+
+### `plan.md` structure
+```
+# Sprint: <goal>
+
+**Started:** <ISO date>
+**Goal:** <one sentence>
+
+## Tasks
+
+- [ ] **T1** [pending|in_progress|done|blocked] @<nickname> — <task description>
+  - Acceptance: <how to know it's done>
+  - Notes: <Planner notes>
+
+- [ ] **T2** [pending|...] @<nickname> — ...
+
+## Routing Overrides
+
+(Empty until the Orchestrator overrides a Planner assignment. Format: `T3: planner assigned @<old> → orchestrator dispatched @<new>. Reason: ...`)
+
+## Sprint Closeout
+
+(Empty until the Reviewer fills it in. Format: `STATUS: PASS|FAIL`, plus per-task verification notes.)
+```
+
+### Status vocabulary
+Use ONLY: `pending`, `in_progress`, `done`, `blocked`. No other values.
+
+### Work-logs
+Append-only. New entries go at the bottom. Header for each entry:
+```
+## <ISO timestamp> — Task <task-id>
+```
+
+### Quick-fix records
+Quick fixes are recorded one file per fix at `fixes/<YYYY-MM-DD>_<slug>.md` (slug
+rules as above). They are independent of sprints and need no plan or work-log.
+
+---
+
+## 6. Team Roster
+
+See [`.claude/team.md`](.claude/team.md) for the live nickname → role roster. Always reference teammates by nickname (e.g., `@nickname`).
+
+---
+
+## 7. Git & Version Control
+
+### Commit attribution
+Every commit an agent makes MUST start its subject with the agent's nickname:
+`@<nickname>: <imperative summary>` (e.g. `@rocky: fix pagination off-by-one`).
+Because all commits land on the guide's git identity, this prefix is how the
+guide tells which teammate authored each commit. Agents follow the `using-git`
+skill for this.
+
+### Sprint branches
+`/sprint-start` creates and switches to a `sprint/<slug>` branch (same slug as the
+sprint folder). All sprint work is committed there. In a non-git directory, branch
+creation is skipped with a warning. `/sprint-close` reports the branch name and
+suggests next steps (merge / PR / keep) but does **not** merge automatically.
+
+### Quick fixes
+`/quick-fix "<description>" [@nickname]` records a small change in
+`fixes/<YYYY-MM-DD>_<slug>.md` with this format:
+
+```
+# Quick Fix: <description>
+**By:** @<nickname>
+**Date:** <ISO date>
+**Commit:** <sha>
+
+## Change
+<what changed and why>
+
+## Result
+<tests run / observed outcome>
+```

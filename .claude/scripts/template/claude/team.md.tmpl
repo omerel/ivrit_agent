@@ -1,0 +1,13 @@
+# $project_name — Team Roster
+
+This file is the live roster of agent nicknames and their official roles. The Orchestrator and the Planner read it at sprint start. Edit it via `python .claude/scripts/team_setup.py --rename old=new` (do not hand-edit unless you know what you're doing).
+
+## Roster
+
+$roster_block
+
+## Conventions
+
+- Reference teammates by nickname only (e.g., `@nickname`). Never use the role name in `plan.md` assignments.
+- Nicknames are unique across the team.
+- The Orchestrator is the main Claude session reading `CLAUDE.md`; it is not listed here because it isn't dispatchable.

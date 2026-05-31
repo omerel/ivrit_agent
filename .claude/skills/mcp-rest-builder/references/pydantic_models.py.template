@@ -1,0 +1,16 @@
+"""Pydantic models for {{INVOCATION_NAME}}.
+
+Inferred from probing the REST API. Field constraints and types reflect observed
+values; English descriptions explain semantics to the LLM.
+"""
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, Field
+
+
+class QueryInput(BaseModel):
+    """Input for the {{TOOL_NAME}} tool."""
+{{QUERY_INPUT_FIELDS}}

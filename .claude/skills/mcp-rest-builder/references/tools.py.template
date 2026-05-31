@@ -1,0 +1,33 @@
+"""Tools for {{INVOCATION_NAME}} — wraps the REST API at {{BASE_URL}}."""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+import requests
+from fastmcp import FastMCP
+
+from .pydantic_models import QueryInput
+
+_SPEC = json.loads((Path(__file__).parent / "spec.json").read_text(encoding="utf-8"))
+_BASE_URL = _SPEC["rest_api"]["base_url"]
+_HEADERS = _SPEC["rest_api"]["headers"]
+
+
+def register_tools(mcp: FastMCP) -> None:
+    @mcp.tool()
+    async def {{TOOL_NAME}}(input: QueryInput) -> Any:
+        """{{TOOL_DOCSTRING}}"""
+        payload = input.model_dump(mode="json", exclude_none=True)
+        try:
+            resp = requests.post(_BASE_URL, headers=_HEADERS, json=payload, timeout=30)
+        except requests.RequestException as e:
+            raise RuntimeError(f"Network error calling the API: {e}") from e
+
+        if resp.status_code >= 400:
+            raise RuntimeError(
+                f"API returned error {resp.status_code}: {resp.text[:500]}"
+            )
+
+        return resp.json()

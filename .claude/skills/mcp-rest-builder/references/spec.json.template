@@ -1,0 +1,23 @@
+{
+  "name": "{{INVOCATION_NAME}}",
+  "version": "0.1.0",
+  "language": "en",
+  "description": "{{DESCRIPTION_EN}}",
+  "rest_api": {
+    "base_url": "{{BASE_URL}}",
+    "headers": {{HEADERS_JSON}}
+  },
+  "tools": [
+    {
+      "name": "{{TOOL_NAME}}",
+      "description": "{{TOOL_DOCSTRING}}",
+      "input_schema": {{INPUT_SCHEMA_JSON}},
+      "output_schema": {{OUTPUT_SCHEMA_JSON}},
+      "examples": {{EXAMPLES_JSON}}
+    }
+  ],
+  "discovered_during_probing": {
+    "field_constraints": {{FIELD_CONSTRAINTS_JSON}},
+    "edge_cases": {{EDGE_CASES_JSON}}
+  }
+}

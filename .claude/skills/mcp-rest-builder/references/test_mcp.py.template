@@ -1,0 +1,48 @@
+"""Live integration tests for {{INVOCATION_NAME}}.
+
+Hits the REST API at {{BASE_URL}}. The server must be running.
+"""
+from __future__ import annotations
+
+import asyncio
+
+import pytest
+from pydantic import ValidationError
+
+from mcp_code.mcp_service_{{NAME}}.pydantic_models import QueryInput
+from mcp_code.mcp_service_{{NAME}}.tools import register_tools
+from fastmcp import FastMCP
+
+
+def _build_tool():
+    mcp = FastMCP("{{INVOCATION_NAME}}-test")
+    register_tools(mcp)
+    return mcp
+
+
+async def _call_async(tool_name, payload):
+    mcp = _build_tool()
+    tool = await mcp.get_tool(tool_name)
+    return await tool.fn(QueryInput(**payload))
+
+
+def _call(tool_name, payload):
+    return asyncio.run(_call_async(tool_name, payload))
+
+
+def test_happy_path():
+    """{{HAPPY_DESCRIPTION}}"""
+    result = _call("{{TOOL_NAME}}", {{HAPPY_PAYLOAD_JSON}})
+    assert result is not None
+
+
+def test_edge_case():
+    """{{EDGE_DESCRIPTION}}"""
+    result = _call("{{TOOL_NAME}}", {{EDGE_PAYLOAD_JSON}})
+    assert result is not None
+
+
+def test_validation_error_before_http():
+    """{{VALIDATION_DESCRIPTION}}"""
+    with pytest.raises(ValidationError):
+        QueryInput(**{{INVALID_PAYLOAD_JSON}})
