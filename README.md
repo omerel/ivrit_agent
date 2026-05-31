@@ -167,6 +167,15 @@ The client probes `GET /health` first and prints a friendly message if the
 server is not running. CPU transcription of even short audio can take a while,
 so the client uses a generous request timeout.
 
+## Hebrew transcript review skill
+
+A Claude Code skill, **`hebrew-transcript-review`**, builds on this service: it
+transcribes a Hebrew recording via the `ivrit-transcribe` MCP, walks the
+transcript with you word by word to learn unfamiliar words (backed by a root-level
+`VOCAB.md`), and writes an RTL transcript plus a Hebrew summary. See
+[`.claude/skills/hebrew-transcript-review/README.md`](.claude/skills/hebrew-transcript-review/README.md).
+It requires this FastAPI service to be running (see [Run](#run)).
+
 ## Offline model requirements
 
 The service runs Hugging Face libraries in **offline mode** (`HF_HUB_OFFLINE=1`,
