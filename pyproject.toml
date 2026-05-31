@@ -1,0 +1,20 @@
+[project]
+name = "ivrit-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "whisperx>=3.8.6",
+    "fastapi",
+    "uvicorn[standard]",
+    "python-multipart",
+    "pydantic-settings",
+    "requests",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "httpx",
+]
