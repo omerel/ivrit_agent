@@ -1,6 +1,6 @@
 # ivrit_agent — Hebrew Speech Transcription + Diarization Service
 
-A FastAPI service that accepts an uploaded audio file and returns structured JSON
+A  FastAPI service that accepts an uploaded audio file and returns structured JSON
 of a **speaker-diarized Hebrew transcription**. It wraps a
 [whisperx](https://github.com/m-bain/whisperX) speech-to-text model
 (`ivrit-ai/whisper-large-v3-turbo-ct2`) together with a local
