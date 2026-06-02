@@ -655,6 +655,40 @@
         color: var(--paper-faint);
         letter-spacing: .03em;
       }
+
+      /* per-turn speaker REASSIGNMENT control (feature 2) — fixes a diarization
+         mistake by moving this turn's segments to a different / new speaker.
+         Distinct from the global rename legend. Sits at the end of the .meta row,
+         reading as a quiet utility (mono label + hairline select) so it never
+         competes with the speaker name; teal focus ties it to the theme. */
+      .reassign {
+        display: inline-flex; align-items: center; gap: 7px;
+        margin-inline-start: auto;
+      }
+      .reassign .ra-lab {
+        font-family: var(--mono);
+        font-size: .58rem; letter-spacing: .14em; text-transform: uppercase;
+        color: var(--paper-faint);
+        white-space: nowrap;
+      }
+      .reassign select {
+        font-family: var(--sans);
+        font-size: .76rem; font-weight: 600;
+        color: var(--paper-dim);
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 3px 8px;
+        max-width: 14ch;
+        cursor: pointer;
+        transition: border-color .2s ease, color .2s ease, background .2s ease;
+      }
+      .reassign select:hover { border-color: var(--paper-faint); color: var(--paper); }
+      .reassign select:focus-visible {
+        outline: 2px solid var(--accent-2); outline-offset: 2px;
+        border-color: var(--accent);
+      }
+      .reassign select option { color: var(--paper); background: var(--panel-2); }
       .bubble .line {
         font-size: 1.02rem;
         line-height: 1.78;
@@ -1284,6 +1318,29 @@
         // the .md reflects the current data + the renamed speaker names (speakerNames).
         var lastResult = null;     // { language, num_speakers, turns: [{label, segs}] }
 
+        // mutable WORKING COPY of the segments — the single source of truth for
+        // rendering after results arrive. Per-turn reassignment (feature 2) mutates
+        // seg.speaker on these objects in place, then re-runs buildTranscript().
+        // Rebuilt fresh at the start of every renderResults() so no reassignment
+        // leaks across transcription runs.
+        var workingSegments = [];
+        // language / num_speakers of the current run, kept for buildTranscript() +
+        // the Markdown export (which is rebuilt from workingSegments on every render).
+        var workingMeta = { language: null, num_speakers: null };
+
+        // next unused SPEAKER_NN label (zero-padded) not already present among the
+        // working segments, so speakerName/speakerKey/displayName/colorForKey all
+        // keep working when the user adds a brand-new speaker.
+        function nextFreeSpeakerLabel() {
+          var max = -1;
+          for (var i = 0; i < workingSegments.length; i++) {
+            var m = /^SPEAKER[_\s-]?(\d+)$/i.exec(String(workingSegments[i].speaker));
+            if (m) { var n = parseInt(m[1], 10); if (n > max) max = n; }
+          }
+          var next = max + 1;
+          return "SPEAKER_" + (next < 10 ? "0" + next : String(next));
+        }
+
         // map: speakerKey -> array of DOM nodes whose text is the speaker's display name.
         // Lets a legend edit update every turn's name + avatar live, in place.
         var speakerNodes = {};
@@ -1381,32 +1438,64 @@
 
           var segments = Array.isArray(data.segments) ? data.segments : [];
 
+          // build the mutable WORKING COPY from the fresh response (shallow clone of
+          // each segment object) so per-turn reassignment mutates a private copy and
+          // nothing leaks across transcription runs.
+          workingSegments = segments.map(function (s) {
+            return { speaker: s.speaker, text: s.text, start: s.start, end: s.end };
+          });
+          workingMeta = { language: data.language, num_speakers: data.num_speakers };
+
           el.statLang.textContent =
             (data.language == null || data.language === "") ? "—" : data.language;
           el.statSpeakers.textContent =
             (data.num_speakers == null) ? "—" : String(data.num_speakers);
-          el.statSegments.textContent = String(segments.length);
+          el.statSegments.textContent = String(workingSegments.length);
 
+          buildTranscript();
+
+          show(el.results, true);
+          el.results.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        // (re)build the transcript DOM + legend + lastResult.turns from the WORKING
+        // COPY. Safe to re-run after a reassignment without re-fetching. Resets the
+        // per-render node registry (speakerNodes) but NEVER speakerNames, so custom
+        // names survive a reassignment and the global rename stays in effect.
+        function buildTranscript() {
+          speakerNodes = {};
           el.transcript.innerHTML = "";
           el.speakerLegendGrid.innerHTML = "";
           show(el.speakerLegend, false);
 
-          if (segments.length === 0) {
+          if (workingSegments.length === 0) {
             var note = document.createElement("p");
             note.className = "empty-note";
             note.textContent = "לא זוהה דיבור בקובץ.";
             el.transcript.appendChild(note);
-            lastResult = { language: data.language, num_speakers: data.num_speakers, turns: [] };
+            lastResult = { language: workingMeta.language, num_speakers: workingMeta.num_speakers, turns: [] };
             el.downloadMdBtn.disabled = false;
             el.downloadMdBtn.classList.add("show");
-            show(el.results, true);
             return;
           }
 
-          var turns = groupSegments(segments);
+          var turns = groupSegments(workingSegments);
           var registry = {};
           var distinct = [];           // distinct speakers in first-seen order, for the legend
           var seenKeys = {};
+
+          // full distinct-speaker set across ALL segments (first-seen order) — drives
+          // the reassignment <select> options so every current speaker is offered,
+          // not only those visible in the turn order.
+          var distinctLabels = [];
+          var seenLabelKeys = {};
+          workingSegments.forEach(function (seg) {
+            var k = speakerKey(seg.speaker);
+            if (!seenLabelKeys[k]) {
+              seenLabelKeys[k] = true;
+              distinctLabels.push({ key: k, label: seg.speaker });
+            }
+          });
 
           turns.forEach(function (turn, ti) {
             var color = colorForKey(turn.key, registry);
@@ -1456,6 +1545,10 @@
             time.textContent = fmtTime(first.start) + " – " + fmtTime(last.end);
             meta.appendChild(who);
             meta.appendChild(time);
+
+            // per-turn REASSIGNMENT control (feature 2)
+            meta.appendChild(buildReassignControl(ti, turn, distinctLabels));
+
             bubble.appendChild(meta);
 
             turn.segs.forEach(function (seg) {
@@ -1474,13 +1567,62 @@
 
           renderLegend(distinct, registry);
 
-          // store the rendered transcript for the Markdown export (read at click time)
-          lastResult = { language: data.language, num_speakers: data.num_speakers, turns: turns };
+          // store the rebuilt transcript for the Markdown export (read at click time)
+          // — rebuilt from workingSegments so corrections + renames are reflected.
+          lastResult = { language: workingMeta.language, num_speakers: workingMeta.num_speakers, turns: turns };
           el.downloadMdBtn.disabled = false;
           el.downloadMdBtn.classList.add("show");
+        }
 
-          show(el.results, true);
-          el.results.scrollIntoView({ behavior: "smooth", block: "start" });
+        // build the Hebrew <select> that REASSIGNS a turn to a different / new speaker.
+        // ti = turn index (valid for the current render); turn = the turn object;
+        // distinctLabels = [{key,label}] of every current speaker. On change it mutates
+        // seg.speaker for every segment in the turn (refs into workingSegments) then
+        // re-renders via buildTranscript() so grouping / color / name / merge update.
+        function buildReassignControl(ti, turn, distinctLabels) {
+          var ctl = document.createElement("span");
+          ctl.className = "reassign";
+
+          var selId = "reassign-" + ti;
+          var lab = document.createElement("label");
+          lab.className = "ra-lab";
+          lab.setAttribute("for", selId);
+          lab.textContent = "שיוך";
+
+          var sel = document.createElement("select");
+          sel.id = selId;
+          sel.setAttribute("data-turn-idx", String(ti));
+          sel.setAttribute("aria-label", "שיוך הקטע לדובר/ת");
+          sel.title = "שיוך הקטע לדובר/ת אחר/ת";
+
+          var curKey = speakerKey(turn.label);
+          distinctLabels.forEach(function (sp) {
+            var opt = document.createElement("option");
+            opt.value = sp.label == null ? "" : String(sp.label);
+            opt.textContent = displayName(sp.label);
+            if (sp.key === curKey) opt.selected = true;
+            sel.appendChild(opt);
+          });
+
+          var newOpt = document.createElement("option");
+          newOpt.value = "__new__";
+          newOpt.textContent = "דובר/ת חדש/ה";
+          sel.appendChild(newOpt);
+
+          sel.addEventListener("change", function () {
+            var idx = parseInt(sel.getAttribute("data-turn-idx"), 10);
+            var t = (lastResult && lastResult.turns) ? lastResult.turns[idx] : null;
+            if (!t) return;
+            var chosen = sel.value;
+            var newLabel = (chosen === "__new__") ? nextFreeSpeakerLabel() : chosen;
+            // mutate the working copy in place (segs are references into workingSegments)
+            t.segs.forEach(function (seg) { seg.speaker = newLabel; });
+            buildTranscript(); // re-group + re-render so merges / colors / names update
+          });
+
+          ctl.appendChild(lab);
+          ctl.appendChild(sel);
+          return ctl;
         }
 
         // ---------- Markdown export (client-side only) ----------
