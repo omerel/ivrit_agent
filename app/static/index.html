@@ -234,6 +234,103 @@
       }
       input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
+      /* ---------- Record panel ---------- */
+      .recpanel {
+        border-top: 1px solid var(--line);
+        background:
+          linear-gradient(180deg, rgba(255,255,255,.012), transparent 30%),
+          var(--ink-2);
+        padding: 20px clamp(20px, 4vw, 44px) 22px;
+      }
+      .rec-head {
+        display: flex; align-items: center; gap: 11px;
+        margin-bottom: 16px;
+      }
+      .rec-head .rec-kick {
+        font-family: var(--mono);
+        font-size: .68rem;
+        letter-spacing: .22em;
+        text-transform: uppercase;
+        color: var(--paper-faint);
+        font-weight: 500;
+      }
+      .rec-head .rule { flex: 1 1 auto; height: 1px; background: var(--line); }
+      .rec-head .rec-mic {
+        flex: 0 0 auto; color: var(--accent-2);
+        width: 18px; height: 18px; display: grid; place-items: center;
+      }
+      .rec-head .rec-mic svg { width: 18px; height: 18px; }
+
+      .rec-controls {
+        display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      }
+      .btn-rec {
+        font-family: var(--sans);
+        font-size: .92rem; font-weight: 600;
+        border-radius: var(--radius-sm);
+        padding: 10px 18px;
+        cursor: pointer;
+        display: inline-flex; align-items: center; gap: 9px;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        color: var(--paper);
+        transition: transform .15s ease, border-color .2s, background .2s, color .2s, opacity .2s;
+      }
+      .btn-rec svg { width: 16px; height: 16px; }
+      .btn-rec:hover:not(:disabled) { border-color: var(--paper-faint); transform: translateY(-1px); }
+      .btn-rec:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+      .btn-rec:disabled { opacity: .4; cursor: not-allowed; }
+
+      .btn-rec.is-record { border-color: rgba(248,113,113,.4); color: #f6c9c9; }
+      .btn-rec.is-record:hover:not(:disabled) {
+        border-color: var(--bad); background: rgba(248,113,113,.1); color: #ffdada;
+      }
+      .btn-rec.is-record .dot-rec {
+        width: 9px; height: 9px; border-radius: 50%; background: var(--bad);
+        box-shadow: 0 0 0 0 rgba(248,113,113,.6);
+      }
+      .btn-rec.is-stop { border-color: var(--line); }
+      .btn-rec.is-stop .sq { width: 9px; height: 9px; border-radius: 2px; background: var(--bad); }
+
+      .rec-status {
+        display: inline-flex; align-items: center; gap: 9px;
+        font-family: var(--mono); font-size: .8rem;
+        color: var(--paper-faint); letter-spacing: .04em;
+        margin-inline-start: 2px;
+      }
+      .rec-status.recording { color: #f6c9c9; }
+      .rec-status .pulse {
+        width: 9px; height: 9px; border-radius: 50%; background: var(--bad);
+        display: none;
+        animation: recpulse 1.15s ease-in-out infinite;
+      }
+      .rec-status.recording .pulse { display: inline-block; }
+      @keyframes recpulse {
+        0%,100% { box-shadow: 0 0 0 0 rgba(248,113,113,.55); opacity: 1; }
+        50%      { box-shadow: 0 0 0 7px rgba(248,113,113,0); opacity: .7; }
+      }
+
+      .rec-preview {
+        display: none;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px dashed var(--line-soft);
+      }
+      .rec-preview.show { display: block; animation: fade .3s ease both; }
+      .rec-preview .pv-label {
+        font-family: var(--mono); font-size: .66rem; letter-spacing: .16em;
+        text-transform: uppercase; color: var(--paper-faint);
+        margin: 0 0 9px;
+      }
+      .rec-preview audio {
+        width: 100%; height: 38px; display: block;
+        border-radius: var(--radius-sm);
+        filter: saturate(.85);
+      }
+      .rec-preview .pv-actions {
+        display: flex; gap: 10px; flex-wrap: wrap; margin-top: 13px;
+      }
+
       /* selected file row */
       .filebar {
         display: none;
@@ -509,6 +606,56 @@
 
         <input type="file" id="fileInput" accept="audio/*" />
 
+        <!-- ===================== Record panel ===================== -->
+        <div id="recordPanel" class="recpanel" aria-label="הקלטה ישירה דרך המיקרופון">
+          <div class="rec-head">
+            <span class="rec-mic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="2" width="6" height="11" rx="3"/>
+                <path d="M5 10a7 7 0 0 0 14 0"/>
+                <path d="M12 17v4M8 21h8"/>
+              </svg>
+            </span>
+            <span class="rec-kick">או הקליטו ישירות</span>
+            <span class="rule" aria-hidden="true"></span>
+          </div>
+
+          <div class="rec-controls">
+            <button type="button" class="btn-rec is-record" id="recordBtn" aria-label="התחלת הקלטה דרך המיקרופון">
+              <span class="dot-rec" aria-hidden="true"></span>
+              הקלטה
+            </button>
+            <button type="button" class="btn-rec is-stop" id="stopBtn" aria-label="עצירת ההקלטה" disabled>
+              <span class="sq" aria-hidden="true"></span>
+              עצירה
+            </button>
+            <span class="rec-status" id="recStatus" role="status" aria-live="polite">
+              <span class="pulse" aria-hidden="true"></span>
+              <span id="recStatusText">מוכן להקלטה</span>
+            </span>
+          </div>
+
+          <div class="rec-preview" id="recPreviewWrap">
+            <p class="pv-label">תצוגה מקדימה של ההקלטה</p>
+            <audio id="recPreview" controls preload="metadata" aria-label="האזנה להקלטה שנקלטה"></audio>
+            <div class="pv-actions">
+              <button type="button" class="btn-rec" id="recUse" aria-label="שימוש בהקלטה זו לתמלול">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14M13 6l6 6-6 6"/>
+                </svg>
+                השתמשו בהקלטה לתמלול
+              </button>
+              <button type="button" class="btn-rec" id="recSave" aria-label="שמירת ההקלטה למחשב">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 4v12M12 16l-4-4M12 16l4-4"/>
+                  <path d="M4 20h16"/>
+                </svg>
+                שמרו את ההקלטה
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div id="filebar" class="filebar">
           <div class="fi" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -612,7 +759,15 @@
           statLang:   document.getElementById("statLang"),
           statSpeakers: document.getElementById("statSpeakers"),
           statSegments: document.getElementById("statSegments"),
-          transcript: document.getElementById("transcript")
+          transcript: document.getElementById("transcript"),
+          recordBtn:    document.getElementById("recordBtn"),
+          stopBtn:      document.getElementById("stopBtn"),
+          recStatus:    document.getElementById("recStatus"),
+          recStatusText:document.getElementById("recStatusText"),
+          recPreviewWrap: document.getElementById("recPreviewWrap"),
+          recPreview:   document.getElementById("recPreview"),
+          recUse:       document.getElementById("recUse"),
+          recSave:      document.getElementById("recSave")
         };
 
         var selectedFile = null;
@@ -707,6 +862,190 @@
           el.fileInput.value = "";
           el.filebar.classList.remove("show");
           el.submitBtn.disabled = true;
+        }
+
+        // ---------- in-browser recording (getUserMedia + MediaRecorder) ----------
+        var recSupported = !!(navigator.mediaDevices &&
+                              navigator.mediaDevices.getUserMedia &&
+                              window.MediaRecorder);
+        var mediaRecorder = null;
+        var recStream = null;
+        var recChunks = [];
+        var recBlob = null;
+        var recBlobUrl = null;     // object URL for the <audio> preview
+        var recMime = "audio/webm";
+        var recTimer = null;
+
+        function setRecStatus(text, recording) {
+          el.recStatusText.textContent = text;
+          el.recStatus.classList.toggle("recording", !!recording);
+        }
+
+        function startRecTimer() {
+          var t0 = Date.now();
+          setRecStatus("מקליט… 00:00", true);
+          recTimer = window.setInterval(function () {
+            setRecStatus("מקליט… " + fmtTime((Date.now() - t0) / 1000), true);
+          }, 1000);
+        }
+        function stopRecTimer() {
+          if (recTimer) { window.clearInterval(recTimer); recTimer = null; }
+        }
+
+        function freeStream() {
+          if (recStream) {
+            recStream.getTracks().forEach(function (t) { t.stop(); });
+            recStream = null;
+          }
+        }
+
+        function revokeRecUrl() {
+          if (recBlobUrl) { URL.revokeObjectURL(recBlobUrl); recBlobUrl = null; }
+        }
+
+        function pickRecMime() {
+          // Prefer webm; gracefully fall back if the browser exposes canIsTypeSupported.
+          var candidates = ["audio/webm", "audio/webm;codecs=opus", "audio/ogg", "audio/mp4"];
+          if (window.MediaRecorder && MediaRecorder.isTypeSupported) {
+            for (var i = 0; i < candidates.length; i++) {
+              if (MediaRecorder.isTypeSupported(candidates[i])) return candidates[i];
+            }
+            return ""; // let the browser choose its default
+          }
+          return "audio/webm";
+        }
+
+        function extForMime(mime) {
+          if (/ogg/i.test(mime)) return "ogg";
+          if (/mp4|m4a|aac/i.test(mime)) return "m4a";
+          return "webm";
+        }
+
+        function startRecording() {
+          if (!recSupported) {
+            showError(
+              "הקלטה אינה נתמכת",
+              "הדפדפן הזה אינו תומך בהקלטה דרך המיקרופון. ניתן להעלות קובץ שמע במקום."
+            );
+            return;
+          }
+          if (mediaRecorder && mediaRecorder.state === "recording") return;
+
+          show(el.alert, false);
+          navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(function (stream) {
+              recStream = stream;
+              recChunks = [];
+              recBlob = null;
+
+              var chosen = pickRecMime();
+              var opts = chosen ? { mimeType: chosen } : undefined;
+              try {
+                mediaRecorder = opts ? new MediaRecorder(stream, opts) : new MediaRecorder(stream);
+              } catch (e) {
+                mediaRecorder = new MediaRecorder(stream);
+              }
+              recMime = mediaRecorder.mimeType || chosen || "audio/webm";
+
+              mediaRecorder.addEventListener("dataavailable", function (e) {
+                if (e.data && e.data.size > 0) recChunks.push(e.data);
+              });
+              mediaRecorder.addEventListener("stop", onRecStop);
+
+              mediaRecorder.start();
+              el.recordBtn.disabled = true;
+              el.stopBtn.disabled = false;
+              el.recPreviewWrap.classList.remove("show");
+              startRecTimer();
+            })
+            .catch(function (err) {
+              freeStream();
+              el.recordBtn.disabled = false;
+              el.stopBtn.disabled = true;
+              setRecStatus("מוכן להקלטה", false);
+              var denied = err && (err.name === "NotAllowedError" ||
+                                   err.name === "SecurityError" ||
+                                   err.name === "PermissionDeniedError");
+              if (denied) {
+                showError(
+                  "ההרשאה למיקרופון נדחתה",
+                  "כדי להקליט יש לאשר גישה למיקרופון בדפדפן. לחלופין ניתן להעלות קובץ שמע."
+                );
+              } else if (err && err.name === "NotFoundError") {
+                showError(
+                  "לא נמצא מיקרופון",
+                  "לא אותר התקן הקלטה במחשב. חברו מיקרופון או העלו קובץ שמע."
+                );
+              } else {
+                showError(
+                  "ההקלטה נכשלה",
+                  "לא ניתן היה להתחיל בהקלטה. נסו שוב או העלו קובץ שמע."
+                );
+              }
+            });
+        }
+
+        function stopRecording() {
+          if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            mediaRecorder.stop(); // triggers onRecStop
+          }
+        }
+
+        function onRecStop() {
+          stopRecTimer();
+          freeStream();
+          el.recordBtn.disabled = false;
+          el.stopBtn.disabled = true;
+
+          var type = recMime || "audio/webm";
+          recBlob = new Blob(recChunks, { type: type });
+          recChunks = [];
+
+          if (!recBlob || recBlob.size === 0) {
+            recBlob = null;
+            setRecStatus("מוכן להקלטה", false);
+            showError("ההקלטה ריקה", "לא נקלט שמע. ודאו שהמיקרופון פעיל ונסו שוב.");
+            return;
+          }
+
+          revokeRecUrl();
+          recBlobUrl = URL.createObjectURL(recBlob);
+          el.recPreview.src = recBlobUrl;
+          el.recPreviewWrap.classList.add("show");
+          setRecStatus("ההקלטה מוכנה · " + fmtBytes(recBlob.size), false);
+        }
+
+        function useRecording() {
+          if (!recBlob) {
+            showError("אין הקלטה", "הקליטו שמע לפני השימוש בו לתמלול.");
+            return;
+          }
+          var type = recBlob.type || "audio/webm";
+          var fname = "recording." + extForMime(type);
+          var file = new File([recBlob], fname, { type: type || "audio/webm" });
+          // Route through the EXISTING upload path: enforces the 25 MiB guard,
+          // fills the filebar, and enables the existing #submitBtn / submit().
+          setFile(file);
+          if (selectedFile) {
+            // setFile accepted it (within size limit) — point the user to submit.
+            el.filebar.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          }
+        }
+
+        function saveRecording() {
+          if (!recBlob) {
+            showError("אין הקלטה", "הקליטו שמע לפני השמירה.");
+            return;
+          }
+          var type = recBlob.type || "audio/webm";
+          var url = URL.createObjectURL(recBlob);
+          var a = document.createElement("a");
+          a.href = url;
+          a.download = "recording." + extForMime(type);
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.setTimeout(function () { URL.revokeObjectURL(url); }, 0);
         }
 
         // ---------- elapsed clock ----------
@@ -943,6 +1282,25 @@
         });
 
         el.submitBtn.addEventListener("click", submit);
+
+        // record panel wiring
+        el.recordBtn.addEventListener("click", startRecording);
+        el.stopBtn.addEventListener("click", stopRecording);
+        el.recUse.addEventListener("click", useRecording);
+        el.recSave.addEventListener("click", saveRecording);
+
+        if (!recSupported) {
+          el.recordBtn.disabled = true;
+          el.stopBtn.disabled = true;
+          el.recordBtn.title = "הדפדפן אינו תומך בהקלטה";
+          setRecStatus("הקלטה אינה נתמכת בדפדפן זה", false);
+        }
+
+        // free the mic / object URLs if the page is closed mid-recording
+        window.addEventListener("beforeunload", function () {
+          freeStream();
+          revokeRecUrl();
+        });
       })();
     </script>
   </body>
