@@ -92,3 +92,78 @@ def test_markdown_download_present():
     body = _index_html()
     assert 'id="downloadMdBtn"' in body, "Markdown download button missing"
     assert "text/markdown" in body, "Markdown export must build a text/markdown blob"
+
+
+# --- 2026-06-02 sprint: upload audio playback + per-turn reassignment --------
+#
+# Two more client-side features were added to the same single offline page:
+#   (1) an inline <audio> player for the UPLOADED file, and
+#   (2) per-turn speaker REASSIGNMENT to fix diarization mistakes.
+# The markers below were confirmed present in the shipped index.html before
+# being asserted here (see work-logs/architect.md "Shared markers T3 can
+# assert"). CSS / visual details are intentionally NOT asserted.
+
+
+def test_index_still_offline_after_playback_and_reassignment():
+    """Offline invariant re-asserted against the newest markup."""
+    body = _index_html()
+    forbidden = [
+        r"https?://",
+        r"fonts\.googleapis",
+        r"fonts\.gstatic",
+        r"//cdn",
+    ]
+    for pattern in forbidden:
+        match = re.search(pattern, body)
+        assert match is None, (
+            f"served index.html must stay fully offline but matched "
+            f"{pattern!r}: {match.group(0)!r}"
+        )
+
+
+def test_index_contract_invariants_after_playback_and_reassignment():
+    """Contract invariants re-asserted against the newest markup."""
+    body = _index_html()
+    assert '<html lang="he" dir="rtl">' in body
+    assert "/transcribe" in body
+    assert 'type="file"' in body
+
+
+# --- Feature 1: inline player for the UPLOADED file -------------------------
+
+def test_upload_audio_player_present():
+    body = _index_html()
+    assert 'id="uploadPreview"' in body, "upload-preview wrapper missing"
+    assert 'id="uploadPreviewAudio"' in body, "upload <audio> player missing"
+
+
+def test_upload_player_uses_object_url():
+    body = _index_html()
+    assert "createObjectURL" in body, (
+        "upload player must load the file via URL.createObjectURL"
+    )
+
+
+# --- Feature 2: per-turn speaker reassignment -------------------------------
+
+def test_reassignment_per_turn_token_present():
+    body = _index_html()
+    assert "data-turn-idx" in body, "per-turn reassignment id/data attribute missing"
+    assert "workingSegments" in body, "client-side working-copy state token missing"
+
+
+def test_reassignment_add_new_speaker_option_present():
+    body = _index_html()
+    assert "דובר/ת חדש/ה" in body, (
+        "Hebrew 'add new speaker' reassignment option missing"
+    )
+
+
+# --- Contract not duplicated -------------------------------------------------
+
+def test_single_transcribe_fetch_call():
+    body = _index_html()
+    count = len(re.findall(r'fetch\("/transcribe"', body))
+    assert count == 1, (
+        f'expected exactly one fetch("/transcribe" call, found {count}'
+    )
