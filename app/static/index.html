@@ -2,12 +2,904 @@
 <html lang="he" dir="rtl">
   <head>
     <meta charset="utf-8" />
-    <title>ivrit_agent</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>תמלול · ארכיון השמע העברי</title>
+    <style>
+      /* ============================================================
+         OFFLINE-ONLY. No remote fonts, no CDNs, no external assets.
+         System font stack with Hebrew fallbacks. All visuals are
+         hand-built with CSS + inline SVG. POSTs to relative /transcribe.
+         ============================================================ */
+
+      :root {
+        --ink:        #14110d;   /* deep warm charcoal */
+        --ink-2:      #1d1913;
+        --panel:      #211c15;
+        --panel-2:    #2a2419;
+        --line:       #3a3225;
+        --paper:      #efe6d2;   /* warm parchment text */
+        --paper-dim:  #b9ac8f;
+        --paper-faint:#7d7259;
+        --ember:      #e8853a;   /* primary accent — warm amber */
+        --ember-2:    #f3b24b;
+        --ember-glow: rgba(232,133,58,.30);
+        --ok:         #8fb96a;
+        --bad:        #e2674e;
+        --speak-a:    #e8853a;
+        --speak-b:    #6fb3c9;
+        --speak-c:    #c98fc1;
+        --speak-d:    #9ec46a;
+        --speak-e:    #e0b94a;
+        --speak-f:    #d27a7a;
+        --serif: "Hoefler Text", "Frank Ruhl Libre", "Times New Roman", "David", Georgia, serif;
+        --sans: "Segoe UI", "Helvetica Neue", Arial, "Noto Sans Hebrew", "Arial Hebrew", sans-serif;
+        --mono: "SF Mono", "Menlo", "Consolas", "Courier New", monospace;
+        --radius: 14px;
+        --shadow: 0 24px 60px -28px rgba(0,0,0,.75);
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body { height: 100%; }
+
+      body {
+        margin: 0;
+        font-family: var(--sans);
+        color: var(--paper);
+        background-color: var(--ink);
+        background-image:
+          radial-gradient(1200px 700px at 88% -8%, rgba(232,133,58,.16), transparent 60%),
+          radial-gradient(900px 600px at -5% 12%, rgba(111,179,201,.10), transparent 55%),
+          linear-gradient(180deg, #161208 0%, #14110d 40%, #100d09 100%);
+        background-attachment: fixed;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        position: relative;
+        overflow-x: hidden;
+      }
+
+      /* fine grain overlay for paper texture — pure CSS, fully offline */
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        opacity: .5;
+        z-index: 0;
+        background-image:
+          repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 1px, transparent 1px 3px),
+          repeating-linear-gradient(90deg, rgba(0,0,0,.04) 0 1px, transparent 1px 3px),
+          radial-gradient(rgba(255,255,255,.015) 1px, transparent 1px);
+        background-size: 100% 3px, 3px 100%, 4px 4px;
+      }
+
+      .wrap {
+        position: relative;
+        z-index: 1;
+        max-width: 880px;
+        margin: 0 auto;
+        padding: clamp(28px, 5vw, 64px) clamp(18px, 4vw, 40px) 96px;
+      }
+
+      /* ---------- Masthead ---------- */
+      header.mast {
+        display: flex;
+        align-items: flex-start;
+        gap: 18px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--line);
+        margin-bottom: 40px;
+        animation: rise .7s cubic-bezier(.2,.7,.2,1) both;
+      }
+      .seal {
+        flex: 0 0 auto;
+        width: 56px; height: 56px;
+        display: grid; place-items: center;
+        border-radius: 50%;
+        border: 1.5px solid var(--ember);
+        background:
+          radial-gradient(circle at 30% 25%, rgba(243,178,75,.35), transparent 60%),
+          var(--panel);
+        box-shadow: 0 0 0 4px rgba(232,133,58,.08), inset 0 0 18px rgba(0,0,0,.4);
+        color: var(--ember-2);
+      }
+      .seal svg { width: 30px; height: 30px; display: block; }
+      .mast-titles { flex: 1 1 auto; min-width: 0; }
+      .kicker {
+        font-size: .72rem;
+        letter-spacing: .28em;
+        text-transform: uppercase;
+        color: var(--ember-2);
+        font-weight: 600;
+        margin: 2px 0 6px;
+      }
+      h1 {
+        font-family: var(--serif);
+        font-weight: 600;
+        font-size: clamp(1.9rem, 4.6vw, 3rem);
+        line-height: 1.05;
+        margin: 0 0 8px;
+        letter-spacing: -.01em;
+        color: var(--paper);
+      }
+      h1 .accent { color: var(--ember); }
+      .lede {
+        margin: 0;
+        color: var(--paper-dim);
+        font-size: clamp(.95rem, 2vw, 1.05rem);
+        max-width: 46ch;
+      }
+
+      /* ---------- Card / drop zone ---------- */
+      .card {
+        background:
+          linear-gradient(180deg, rgba(255,255,255,.02), transparent 30%),
+          var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        animation: rise .8s .08s cubic-bezier(.2,.7,.2,1) both;
+      }
+
+      .dropzone {
+        position: relative;
+        padding: clamp(30px, 5vw, 52px) clamp(20px, 4vw, 44px);
+        text-align: center;
+        cursor: pointer;
+        transition: background .25s ease, box-shadow .25s ease;
+        outline: none;
+      }
+      .dropzone::before {
+        content: "";
+        position: absolute;
+        inset: 14px;
+        border: 1.5px dashed var(--line);
+        border-radius: 10px;
+        transition: border-color .25s ease, transform .25s ease, background .25s ease;
+        pointer-events: none;
+      }
+      .dropzone:hover::before,
+      .dropzone:focus-visible::before { border-color: var(--paper-faint); }
+      .dropzone.drag::before {
+        border-color: var(--ember);
+        background: var(--ember-glow);
+        transform: scale(.995);
+      }
+      .dropzone.drag {
+        box-shadow: inset 0 0 80px -20px var(--ember-glow);
+      }
+
+      .dz-icon {
+        width: 64px; height: 64px;
+        margin: 0 auto 16px;
+        display: grid; place-items: center;
+        border-radius: 16px;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        color: var(--ember-2);
+        transition: transform .35s cubic-bezier(.2,.8,.2,1), color .25s;
+      }
+      .dropzone:hover .dz-icon { transform: translateY(-3px) rotate(-3deg); }
+      .dz-icon svg { width: 30px; height: 30px; }
+
+      .dz-title {
+        font-family: var(--serif);
+        font-size: 1.3rem;
+        margin: 0 0 4px;
+        color: var(--paper);
+      }
+      .dz-sub { margin: 0; color: var(--paper-dim); font-size: .92rem; }
+      .dz-pick {
+        color: var(--ember-2);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+        font-weight: 600;
+      }
+      .dz-hint {
+        margin-top: 14px;
+        font-size: .76rem;
+        letter-spacing: .04em;
+        color: var(--paper-faint);
+      }
+      input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+      /* selected file row */
+      .filebar {
+        display: none;
+        align-items: center;
+        gap: 14px;
+        padding: 16px clamp(20px, 4vw, 44px);
+        border-top: 1px solid var(--line);
+        background: var(--ink-2);
+        animation: fade .3s ease both;
+      }
+      .filebar.show { display: flex; }
+      .filebar .fi {
+        flex: 0 0 auto;
+        width: 40px; height: 40px;
+        border-radius: 10px;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        display: grid; place-items: center;
+        color: var(--ember-2);
+      }
+      .filebar .fi svg { width: 20px; height: 20px; }
+      .filemeta { flex: 1 1 auto; min-width: 0; text-align: start; }
+      .filename {
+        font-weight: 600;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        color: var(--paper);
+      }
+      .filesize { font-size: .8rem; color: var(--paper-dim); font-family: var(--mono); }
+      .clearbtn {
+        flex: 0 0 auto;
+        background: transparent;
+        border: 1px solid var(--line);
+        color: var(--paper-dim);
+        width: 34px; height: 34px; border-radius: 9px;
+        cursor: pointer; display: grid; place-items: center;
+        transition: border-color .2s, color .2s, background .2s;
+      }
+      .clearbtn:hover { color: var(--bad); border-color: var(--bad); background: rgba(226,103,78,.08); }
+      .clearbtn svg { width: 16px; height: 16px; }
+
+      /* action bar */
+      .actions {
+        padding: 18px clamp(20px, 4vw, 44px);
+        border-top: 1px solid var(--line);
+        display: flex; align-items: center; gap: 16px;
+        flex-wrap: wrap;
+      }
+      .btn {
+        font-family: var(--sans);
+        font-size: 1rem;
+        font-weight: 600;
+        border: none;
+        border-radius: 11px;
+        padding: 13px 26px;
+        cursor: pointer;
+        display: inline-flex; align-items: center; gap: 10px;
+        transition: transform .15s ease, box-shadow .25s ease, filter .2s ease, opacity .2s;
+      }
+      .btn-primary {
+        color: #21160b;
+        background: linear-gradient(135deg, var(--ember-2), var(--ember));
+        box-shadow: 0 12px 30px -12px var(--ember-glow), inset 0 1px 0 rgba(255,255,255,.3);
+      }
+      .btn-primary:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.05); }
+      .btn-primary:active:not(:disabled) { transform: translateY(0); }
+      .btn:disabled { opacity: .45; cursor: not-allowed; }
+      .btn svg { width: 18px; height: 18px; }
+      .actions .note { color: var(--paper-faint); font-size: .82rem; }
+
+      /* ---------- States: error / loading / results ---------- */
+      .panel { margin-top: 26px; }
+
+      .alert {
+        display: none;
+        gap: 14px;
+        padding: 16px 18px;
+        border-radius: var(--radius);
+        border: 1px solid rgba(226,103,78,.4);
+        background: linear-gradient(180deg, rgba(226,103,78,.14), rgba(226,103,78,.05));
+        color: #f3d6cd;
+        align-items: flex-start;
+        animation: rise .4s ease both;
+        margin-top: 16px;
+      }
+      .alert.show { display: flex; }
+      .alert .ai {
+        flex: 0 0 auto; color: var(--bad);
+        width: 24px; height: 24px; margin-top: 1px;
+      }
+      .alert .ai svg { width: 24px; height: 24px; }
+      .alert strong { display: block; color: #ffd9cf; margin-bottom: 2px; }
+      .alert span { color: #e9c2b8; font-size: .92rem; }
+
+      /* loading */
+      .loading { display: none; text-align: center; padding: 44px 20px 40px; animation: fade .4s ease both; }
+      .loading.show { display: block; }
+      .wave {
+        display: inline-flex; align-items: flex-end; gap: 5px; height: 56px; margin-bottom: 20px;
+      }
+      .wave i {
+        width: 5px; border-radius: 4px;
+        background: linear-gradient(180deg, var(--ember-2), var(--ember));
+        animation: bounce 1.1s ease-in-out infinite;
+      }
+      .wave i:nth-child(1){height:18px;animation-delay:0s}
+      .wave i:nth-child(2){height:40px;animation-delay:.09s}
+      .wave i:nth-child(3){height:26px;animation-delay:.18s}
+      .wave i:nth-child(4){height:52px;animation-delay:.27s}
+      .wave i:nth-child(5){height:32px;animation-delay:.36s}
+      .wave i:nth-child(6){height:46px;animation-delay:.45s}
+      .wave i:nth-child(7){height:22px;animation-delay:.54s}
+      .wave i:nth-child(8){height:38px;animation-delay:.63s}
+      .wave i:nth-child(9){height:28px;animation-delay:.72s}
+      .loading h3 { font-family: var(--serif); font-size: 1.3rem; margin: 0 0 6px; color: var(--paper); }
+      .loading p { margin: 0; color: var(--paper-dim); }
+      .loading .elapsed { font-family: var(--mono); color: var(--ember-2); font-size: .85rem; margin-top: 10px; }
+
+      /* ---------- Results ---------- */
+      .results { display: none; animation: rise .5s ease both; }
+      .results.show { display: block; }
+
+      .summary {
+        display: flex; flex-wrap: wrap; gap: 12px;
+        padding-bottom: 22px; margin-bottom: 6px;
+        border-bottom: 1px solid var(--line);
+      }
+      .summary .res-title {
+        flex: 1 1 100%;
+        font-family: var(--serif);
+        font-size: 1.5rem;
+        margin: 0 0 4px;
+        color: var(--paper);
+        display: flex; align-items: center; gap: 10px;
+      }
+      .summary .res-title svg { width: 22px; height: 22px; color: var(--ok); }
+      .stat {
+        display: inline-flex; flex-direction: column;
+        padding: 10px 16px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        min-width: 120px;
+      }
+      .stat .k { font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--paper-faint); }
+      .stat .v { font-family: var(--serif); font-size: 1.35rem; color: var(--ember-2); }
+
+      .transcript { margin-top: 26px; display: flex; flex-direction: column; gap: 18px; }
+
+      .turn {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 14px;
+        align-items: start;
+        animation: rise .45s ease both;
+      }
+      .turn .rail {
+        flex: 0 0 auto;
+        display: flex; flex-direction: column; align-items: center; gap: 6px;
+        padding-top: 2px;
+      }
+      .avatar {
+        width: 42px; height: 42px; border-radius: 12px;
+        display: grid; place-items: center;
+        font-family: var(--serif); font-weight: 600; font-size: 1.05rem;
+        color: #1a140c;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
+      }
+      .thread { width: 2px; flex: 1 1 auto; background: var(--line); border-radius: 2px; min-height: 6px; }
+
+      .bubble {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        border-start-start-radius: 4px;
+        padding: 12px 16px 14px;
+        position: relative;
+      }
+      .bubble .meta {
+        display: flex; align-items: baseline; gap: 10px;
+        margin-bottom: 6px; flex-wrap: wrap;
+      }
+      .bubble .who { font-weight: 700; font-size: .92rem; }
+      .bubble .time {
+        font-family: var(--mono); font-size: .76rem;
+        color: var(--paper-faint);
+        letter-spacing: .02em;
+      }
+      .bubble .line {
+        font-size: 1.04rem;
+        line-height: 1.75;
+        color: var(--paper);
+        margin: 4px 0;
+      }
+      .bubble .line:not(:last-child) { padding-bottom: 6px; border-bottom: 1px dashed rgba(255,255,255,.05); }
+
+      .empty-note {
+        text-align: center; color: var(--paper-dim);
+        padding: 26px; font-style: italic;
+      }
+
+      footer.foot {
+        margin-top: 54px; padding-top: 22px;
+        border-top: 1px solid var(--line);
+        color: var(--paper-faint); font-size: .8rem;
+        display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+      }
+      footer.foot .dot { color: var(--ember); }
+
+      /* ---------- Animations ---------- */
+      @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+      @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes bounce { 0%,100% { transform: scaleY(.4); opacity:.6; } 50% { transform: scaleY(1); opacity:1; } }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+      }
+
+      @media (max-width: 520px) {
+        .turn { grid-template-columns: auto 1fr; gap: 10px; }
+        .avatar { width: 36px; height: 36px; font-size: .95rem; }
+        .stat { flex: 1 1 calc(50% - 6px); min-width: 0; }
+      }
+    </style>
   </head>
+
   <body>
-    <!-- Placeholder served by T2. @frontend (T3) replaces this with the real
-         offline RTL Hebrew upload UI. Must keep `dir="rtl"` and the literal
-         /transcribe so T2/T4 tests stay green. -->
-    <p>הדף בבנייה. ההעלאה תישלח אל /transcribe.</p>
+    <main class="wrap">
+      <!-- ===================== Masthead ===================== -->
+      <header class="mast">
+        <div class="seal" aria-hidden="true">
+          <!-- microphone / soundwave seal -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="2" width="6" height="11" rx="3"/>
+            <path d="M5 10a7 7 0 0 0 14 0"/>
+            <path d="M12 17v4M8 21h8"/>
+          </svg>
+        </div>
+        <div class="mast-titles">
+          <p class="kicker">ארכיון השמע · תמלול אוטומטי</p>
+          <h1>תמלול <span class="accent">בעברית</span></h1>
+          <p class="lede">העלו קובץ שמע והמערכת תזהה דוברים ותפיק תמלול מסודר — הכול מקומית, ללא חיבור לאינטרנט.</p>
+        </div>
+      </header>
+
+      <!-- ===================== Upload card ===================== -->
+      <section class="card" aria-label="העלאת קובץ שמע">
+        <div id="dropzone" class="dropzone" role="button" tabindex="0"
+             aria-label="גררו לכאן קובץ שמע או לחצו לבחירה">
+          <div class="dz-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 16V4M12 4l-4 4M12 4l4 4"/>
+              <path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>
+            </svg>
+          </div>
+          <p class="dz-title">גררו לכאן קובץ שמע</p>
+          <p class="dz-sub">או <span class="dz-pick">בחרו קובץ מהמחשב</span></p>
+          <p class="dz-hint">קבצי שמע נתמכים · עד 25 מ״ב</p>
+        </div>
+
+        <input type="file" id="fileInput" accept="audio/*" />
+
+        <div id="filebar" class="filebar">
+          <div class="fi" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>
+            </svg>
+          </div>
+          <div class="filemeta">
+            <div class="filename" id="fileName">—</div>
+            <div class="filesize" id="fileSize"></div>
+          </div>
+          <button type="button" class="clearbtn" id="clearBtn" aria-label="הסרת הקובץ">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 6l12 12M18 6L6 18"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn btn-primary" id="submitBtn" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6"/>
+            </svg>
+            התחילו בתמלול
+          </button>
+          <span class="note">העיבוד עשוי להימשך מספר דקות, בהתאם לאורך ההקלטה.</span>
+        </div>
+      </section>
+
+      <!-- ===================== Inline (pre-send) alert ===================== -->
+      <div id="alert" class="alert" role="alert" aria-live="assertive">
+        <span class="ai" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>
+          </svg>
+        </span>
+        <div>
+          <strong id="alertTitle">אירעה שגיאה</strong>
+          <span id="alertMsg"></span>
+        </div>
+      </div>
+
+      <!-- ===================== Loading ===================== -->
+      <div id="loading" class="loading panel" aria-live="polite">
+        <div class="wave" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <h3>מתמללים את ההקלטה…</h3>
+        <p>המערכת מזהה דיבור ומפרידה בין הדוברים. אפשר להמתין בסבלנות.</p>
+        <div class="elapsed" id="elapsed">00:00</div>
+      </div>
+
+      <!-- ===================== Results ===================== -->
+      <div id="results" class="results panel" aria-live="polite">
+        <div class="summary">
+          <h2 class="res-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6 9 17l-5-5"/>
+            </svg>
+            התמלול מוכן
+          </h2>
+          <div class="stat"><span class="k">שפה</span><span class="v" id="statLang">—</span></div>
+          <div class="stat"><span class="k">מספר דוברים</span><span class="v" id="statSpeakers">—</span></div>
+          <div class="stat"><span class="k">מקטעים</span><span class="v" id="statSegments">—</span></div>
+        </div>
+        <div class="transcript" id="transcript"></div>
+      </div>
+
+      <footer class="foot">
+        <span>תמלול עברי · עובד <span class="dot">●</span> במצב לא־מקוון לחלוטין</span>
+        <span>המידע אינו נשלח לשום שרת חיצוני</span>
+      </footer>
+    </main>
+
+    <script>
+      "use strict";
+
+      (function () {
+        var MAX_UPLOAD_BYTES = 26214400; // 25 MiB — must match settings.MAX_UPLOAD_BYTES
+
+        // Hebrew speaker labels: SPEAKER_00 -> "דובר/ת 1", UNKNOWN -> "לא מזוהה"
+        var HEBREW_DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+        var SPEAKER_COLORS = [
+          "var(--speak-a)", "var(--speak-b)", "var(--speak-c)",
+          "var(--speak-d)", "var(--speak-e)", "var(--speak-f)"
+        ];
+
+        var el = {
+          dropzone:   document.getElementById("dropzone"),
+          fileInput:  document.getElementById("fileInput"),
+          filebar:    document.getElementById("filebar"),
+          fileName:   document.getElementById("fileName"),
+          fileSize:   document.getElementById("fileSize"),
+          clearBtn:   document.getElementById("clearBtn"),
+          submitBtn:  document.getElementById("submitBtn"),
+          alert:      document.getElementById("alert"),
+          alertTitle: document.getElementById("alertTitle"),
+          alertMsg:   document.getElementById("alertMsg"),
+          loading:    document.getElementById("loading"),
+          elapsed:    document.getElementById("elapsed"),
+          results:    document.getElementById("results"),
+          statLang:   document.getElementById("statLang"),
+          statSpeakers: document.getElementById("statSpeakers"),
+          statSegments: document.getElementById("statSegments"),
+          transcript: document.getElementById("transcript")
+        };
+
+        var selectedFile = null;
+        var busy = false;
+        var elapsedTimer = null;
+
+        // ---------- helpers ----------
+        function fmtBytes(n) {
+          if (n < 1024) return n + " ב׳";
+          if (n < 1048576) return (n / 1024).toFixed(1) + " ק״ב";
+          return (n / 1048576).toFixed(2) + " מ״ב";
+        }
+
+        function fmtTime(sec) {
+          if (sec == null || isNaN(sec) || sec < 0) sec = 0;
+          var total = Math.floor(sec);
+          var m = Math.floor(total / 60);
+          var s = total % 60;
+          var pad = function (x) { return x < 10 ? "0" + x : "" + x; };
+          if (m >= 60) {
+            var h = Math.floor(m / 60);
+            return h + ":" + pad(m % 60) + ":" + pad(s);
+          }
+          return pad(m) + ":" + pad(s);
+        }
+
+        function speakerName(label) {
+          if (label == null || label === "") return "דובר/ת לא מזוהה";
+          if (label === "UNKNOWN") return "דובר/ת לא מזוהה";
+          var m = /^SPEAKER[_\s-]?(\d+)$/i.exec(String(label));
+          if (m) {
+            var idx = parseInt(m[1], 10);
+            return "דובר/ת " + (HEBREW_DIGITS[idx] || (idx + 1));
+          }
+          return String(label);
+        }
+
+        function speakerKey(label) {
+          return (label == null || label === "") ? "__none__" : String(label);
+        }
+
+        function escapeText(t) {
+          var d = document.createElement("div");
+          d.textContent = t == null ? "" : String(t);
+          return d.innerHTML;
+        }
+
+        // ---------- visibility state machine ----------
+        function show(node, on) { node.classList.toggle("show", !!on); }
+
+        function clearStates() {
+          show(el.alert, false);
+          show(el.loading, false);
+          show(el.results, false);
+        }
+
+        function showError(title, msg) {
+          clearStates();
+          el.alertTitle.textContent = title || "אירעה שגיאה";
+          el.alertMsg.textContent = msg || "";
+          show(el.alert, true);
+        }
+
+        // ---------- file selection ----------
+        function setFile(file) {
+          show(el.alert, false);
+          if (!file) { clearFile(); return; }
+
+          if (file.size === 0) {
+            clearFile();
+            showError("הקובץ ריק", "הקובץ שנבחר אינו מכיל נתונים. בחרו קובץ שמע תקין.");
+            return;
+          }
+          if (file.size > MAX_UPLOAD_BYTES) {
+            clearFile();
+            showError(
+              "הקובץ גדול מדי",
+              "גודל הקובץ הוא " + fmtBytes(file.size) + ", והמגבלה היא 25 מ״ב. בחרו קובץ קטן יותר."
+            );
+            return;
+          }
+
+          selectedFile = file;
+          el.fileName.textContent = file.name;
+          el.fileSize.textContent = fmtBytes(file.size);
+          el.filebar.classList.add("show");
+          el.submitBtn.disabled = false;
+        }
+
+        function clearFile() {
+          selectedFile = null;
+          el.fileInput.value = "";
+          el.filebar.classList.remove("show");
+          el.submitBtn.disabled = true;
+        }
+
+        // ---------- elapsed clock ----------
+        function startElapsed() {
+          var t0 = Date.now();
+          el.elapsed.textContent = "00:00";
+          elapsedTimer = window.setInterval(function () {
+            el.elapsed.textContent = fmtTime((Date.now() - t0) / 1000);
+          }, 1000);
+        }
+        function stopElapsed() {
+          if (elapsedTimer) { window.clearInterval(elapsedTimer); elapsedTimer = null; }
+        }
+
+        // ---------- render results ----------
+        function groupSegments(segments) {
+          // Group consecutive segments by speaker into "turns".
+          var turns = [];
+          var cur = null;
+          for (var i = 0; i < segments.length; i++) {
+            var seg = segments[i];
+            var key = speakerKey(seg.speaker);
+            if (!cur || cur.key !== key) {
+              cur = { key: key, label: seg.speaker, segs: [] };
+              turns.push(cur);
+            }
+            cur.segs.push(seg);
+          }
+          return turns;
+        }
+
+        function colorForKey(key, registry) {
+          if (!(key in registry)) {
+            registry[key] = SPEAKER_COLORS[Object.keys(registry).length % SPEAKER_COLORS.length];
+          }
+          return registry[key];
+        }
+
+        function renderResults(data) {
+          stopElapsed();
+          clearStates();
+
+          var segments = Array.isArray(data.segments) ? data.segments : [];
+
+          el.statLang.textContent =
+            (data.language == null || data.language === "") ? "—" : data.language;
+          el.statSpeakers.textContent =
+            (data.num_speakers == null) ? "—" : String(data.num_speakers);
+          el.statSegments.textContent = String(segments.length);
+
+          el.transcript.innerHTML = "";
+
+          if (segments.length === 0) {
+            var note = document.createElement("p");
+            note.className = "empty-note";
+            note.textContent = "לא זוהה דיבור בקובץ.";
+            el.transcript.appendChild(note);
+            show(el.results, true);
+            return;
+          }
+
+          var turns = groupSegments(segments);
+          var registry = {};
+
+          turns.forEach(function (turn, ti) {
+            var color = colorForKey(turn.key, registry);
+
+            var wrap = document.createElement("div");
+            wrap.className = "turn";
+            wrap.style.animationDelay = Math.min(ti * 0.04, 0.5) + "s";
+
+            // rail (avatar + thread)
+            var rail = document.createElement("div");
+            rail.className = "rail";
+            var avatar = document.createElement("div");
+            avatar.className = "avatar";
+            avatar.style.background = color;
+            var name = speakerName(turn.label);
+            // initial for avatar: first meaningful char of Hebrew label or speaker number
+            avatar.textContent = name.replace(/[^0-9]/g, "") || name.charAt(0);
+            avatar.title = name;
+            var thread = document.createElement("div");
+            thread.className = "thread";
+            rail.appendChild(avatar);
+            rail.appendChild(thread);
+
+            // bubble
+            var bubble = document.createElement("div");
+            bubble.className = "bubble";
+            bubble.style.borderInlineStartColor = color;
+
+            var first = turn.segs[0];
+            var last = turn.segs[turn.segs.length - 1];
+
+            var meta = document.createElement("div");
+            meta.className = "meta";
+            var who = document.createElement("span");
+            who.className = "who";
+            who.style.color = color;
+            who.textContent = name;
+            var time = document.createElement("span");
+            time.className = "time";
+            time.textContent = fmtTime(first.start) + " – " + fmtTime(last.end);
+            meta.appendChild(who);
+            meta.appendChild(time);
+            bubble.appendChild(meta);
+
+            turn.segs.forEach(function (seg) {
+              var line = document.createElement("p");
+              line.className = "line";
+              line.setAttribute("dir", "rtl");
+              line.innerHTML = escapeText(seg.text) ||
+                "<span style='color:var(--paper-faint)'>[ללא טקסט]</span>";
+              bubble.appendChild(line);
+            });
+
+            wrap.appendChild(rail);
+            wrap.appendChild(bubble);
+            el.transcript.appendChild(wrap);
+          });
+
+          show(el.results, true);
+          el.results.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        // ---------- submit ----------
+        function submit() {
+          if (busy) return;
+          if (!selectedFile) {
+            showError("לא נבחר קובץ", "בחרו או גררו קובץ שמע לפני התחלת התמלול.");
+            return;
+          }
+          if (selectedFile.size === 0) {
+            showError("הקובץ ריק", "הקובץ שנבחר אינו מכיל נתונים.");
+            return;
+          }
+          if (selectedFile.size > MAX_UPLOAD_BYTES) {
+            showError("הקובץ גדול מדי", "המגבלה היא 25 מ״ב.");
+            return;
+          }
+
+          busy = true;
+          el.submitBtn.disabled = true;
+          clearStates();
+          show(el.loading, true);
+          startElapsed();
+          el.loading.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+          var fd = new FormData();
+          fd.append("file", selectedFile, selectedFile.name);
+
+          fetch("/transcribe", { method: "POST", body: fd })
+            .then(function (resp) {
+              return resp.text().then(function (raw) {
+                var body = null;
+                try { body = raw ? JSON.parse(raw) : null; } catch (e) { body = null; }
+                if (!resp.ok) {
+                  var detail = (body && typeof body.detail === "string") ? body.detail : null;
+                  var err = new Error(detail || "");
+                  err.handled = true;
+                  err.status = resp.status;
+                  err.detail = detail;
+                  throw err;
+                }
+                if (!body || typeof body !== "object") {
+                  throw new Error("__bad_json__");
+                }
+                return body;
+              });
+            })
+            .then(function (data) {
+              renderResults(data);
+            })
+            .catch(function (err) {
+              stopElapsed();
+              if (err && err.handled) {
+                showError(
+                  "התמלול נכשל" + (err.status ? " (" + err.status + ")" : ""),
+                  err.detail || "השרת החזיר שגיאה. נסו שוב או בחרו קובץ אחר."
+                );
+              } else if (err && err.message === "__bad_json__") {
+                showError("תגובה לא תקינה", "השרת החזיר תשובה שלא ניתן לפענח.");
+              } else {
+                showError(
+                  "החיבור לשרת נכשל",
+                  "לא הצלחנו ליצור קשר עם שירות התמלול. ודאו שהשרת פעיל ונסו שוב."
+                );
+              }
+            })
+            .then(function () {
+              busy = false;
+              el.submitBtn.disabled = !selectedFile;
+            });
+        }
+
+        // ---------- wire up events ----------
+        el.dropzone.addEventListener("click", function () { el.fileInput.click(); });
+        el.dropzone.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.fileInput.click(); }
+        });
+
+        el.fileInput.addEventListener("change", function () {
+          setFile(el.fileInput.files && el.fileInput.files[0]);
+        });
+
+        ["dragenter", "dragover"].forEach(function (ev) {
+          el.dropzone.addEventListener(ev, function (e) {
+            e.preventDefault(); e.stopPropagation();
+            el.dropzone.classList.add("drag");
+          });
+        });
+        ["dragleave", "dragend", "drop"].forEach(function (ev) {
+          el.dropzone.addEventListener(ev, function (e) {
+            e.preventDefault(); e.stopPropagation();
+            el.dropzone.classList.remove("drag");
+          });
+        });
+        el.dropzone.addEventListener("drop", function (e) {
+          var dt = e.dataTransfer;
+          if (dt && dt.files && dt.files.length) setFile(dt.files[0]);
+        });
+
+        // prevent the browser from opening dropped files outside the zone
+        ["dragover", "drop"].forEach(function (ev) {
+          window.addEventListener(ev, function (e) {
+            if (!el.dropzone.contains(e.target)) e.preventDefault();
+          });
+        });
+
+        el.clearBtn.addEventListener("click", function (e) {
+          e.stopPropagation();
+          clearFile();
+          show(el.alert, false);
+        });
+
+        el.submitBtn.addEventListener("click", submit);
+      })();
+    </script>
   </body>
 </html>
