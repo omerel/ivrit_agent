@@ -13,6 +13,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import REPO_ROOT, settings
 from app.schemas import Segment, TranscriptionResponse
@@ -55,7 +57,19 @@ async def lifespan(app: FastAPI):
         app.state.pipeline = None
 
 
+# Static UI assets live in the app/ package. Resolve package-relative (NOT CWD)
+# so the page serves regardless of where uvicorn is launched. StaticFiles
+# validates this directory at import time, so app/static/index.html must exist.
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+
 app = FastAPI(title="ivrit_agent transcription", lifespan=lifespan)
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/", include_in_schema=False)
+async def index():
+    return FileResponse(STATIC_DIR / "index.html", media_type="text/html")
 
 
 @app.get("/health")

@@ -1,0 +1,37 @@
+# Work Log — @architect
+
+## 2026-06-02T13:24:45+0300 — Task T0
+
+**What:** Thin alignment note pinning the shared contract for T1 (upload player) + T2 (per-turn reassignment). No code. IDs/state/function names verified against the real `app/static/index.html`. Feature 2 interpretation confirmed by guide: PER-TURN SPEAKER REASSIGNMENT (fix diarization misattribution), NOT the already-shipped global rename.
+
+### 1. Backend — NO change for either feature
+Both are pure client-side. `POST /transcribe` is unchanged: still multipart field `"file"` (`fd.append("file", selectedFile, selectedFile.name)`, single `fetch("/transcribe", ...)` at line ~1508/1510), returns `{segments,language,num_speakers}` (verified `app/main.py:81-101`). Feature 1 = `URL.createObjectURL(file)` on the local `File`. Feature 2 = mutate a client-side copy of `data.segments` and re-render. Neither needs a server round-trip; the `/transcribe` response contract (`app/schemas.py`) is untouched.
+- **Blocker condition to surface:** ONLY if a feature genuinely needs new/changed server data — e.g. asking the backend to PERSIST corrected speaker assignments, or to re-run diarization server-side. Neither is in scope. If a frontend dev finds they cannot satisfy an acceptance criterion without backend data, STOP and surface to the guide; do not edit `app/main.py`/`app/schemas.py`.
+
+### 2. Feature 1 (upload player) — IDs, placement, lifecycle
+- **New IDs (verified no collision in index.html):** wrapper `#uploadPreview` + `<audio controls preload="metadata">` `#uploadPreviewAudio`. Mirror the recorder's `#recPreviewWrap`/`#recPreview` (HTML ~737-739) and reuse `.rec-preview` / `.pv-label` styling so visibility is toggled via the existing `.show` class.
+- **Placement:** render the wrapper as a child INSIDE `#filebar` (HTML ~758), after `.filemeta`. `#filebar` already gets `.show` on accept and is hidden on clear, so the player auto-appears whenever a file is selected and stays visible alongside results. Give the wrapper its own `.show` toggle so it's hidden when no URL is loaded even if filebar is shown.
+- **Hebrew label:** `pv-label` e.g. "האזנה לקובץ שהועלה".
+- **Object-URL variable:** `var uploadUrl = null;` (parallel to `recBlobUrl`). Add helper `revokeUploadUrl()` parallel to `revokeRecUrl()` (~1045).
+- **Lifecycle:**
+  - In `setFile(file)` AFTER the file is accepted (after `el.submitBtn.disabled = false;`, ~1000): `revokeUploadUrl(); uploadUrl = URL.createObjectURL(file); el.uploadPreviewAudio.src = uploadUrl; el.uploadPreview.classList.add("show");`
+  - In `clearFile()` (~1003): `revokeUploadUrl(); el.uploadPreviewAudio.removeAttribute("src"); el.uploadPreview.classList.remove("show");`
+  - Extend `beforeunload` (~1611) to also call `revokeUploadUrl()`.
+  - Register `uploadPreview` + `uploadPreviewAudio` in the `el` map (~893 region).
+- Keep `#recPreview` SEPARATE — uploaded file and recorded clip must not clobber each other's `src`. (`useRecording()` ~1161 funnels through `setFile`, so the recorded clip ALSO gets an upload-preview URL once "used" — acceptable and intended.)
+
+### 3. Feature 2 (per-turn reassignment) — single client-side state model
+- **State:** `var workingSegments = [];` — the SINGLE source of truth for rendering after the first render. Built at the start of `renderResults` as a shallow clone of each segment object: `data.segments.map(function(s){ return { speaker: s.speaker, text: s.text, start: s.start, end: s.end }; })`. All rendering (first + every re-render) groups `workingSegments`, never raw `data.segments`.
+- **Re-runnable render:** factor the body of `renderResults` (from `var turns = groupSegments(...)` through legend + `lastResult` assignment, ~1353-1430) into `buildTranscript()` that reads `workingSegments`. `renderResults(data)` resets state then builds `workingSegments` then calls `buildTranscript()`. Reassignment calls `buildTranscript()` only (no re-fetch). `buildTranscript()` must reset `speakerNodes = {}` each call (node registry would otherwise leak across re-renders) but MUST NOT reset `speakerNames` (custom names must survive a reassignment).
+- **Control:** a Hebrew `<select>` placed in each turn's `.meta` row (~1394-1406). Options = the distinct speakers by current `displayName(label)` (value = that speaker's LABEL, e.g. `SPEAKER_00`), with the turn's current speaker pre-selected, plus a final option "דובר/ת חדש/ה" (value = sentinel `"__new__"`). Add `aria-label` (e.g. "שיוך הקטע לדובר/ת"). Build the distinct-label list from `workingSegments` (a pass over `groupSegments` output, or a Set of labels) so it includes every current speaker, not just those in the visible turn order.
+- **Turn identity:** the `<select>` carries `data-turn-idx="<ti>"` (the turn index from the `groupSegments` pass). On change: look up `turns[ti].segs`, and for EACH of those segment objects set `seg.speaker = newLabel`. Because `turns[ti].segs` hold references INTO `workingSegments`, the working copy mutates in place; then call `buildTranscript()`. (Turn indices are regenerated every `buildTranscript()` call, so they're always valid for the freshly rendered DOM.)
+- **New-speaker label scheme:** on `"__new__"`, compute the next free `SPEAKER_NN` not already present among `workingSegments` labels — scan existing `/^SPEAKER[_\s-]?(\d+)$/i` numbers, pick `max+1` (zero-padded to 2: `"SPEAKER_" + String(n).padStart(2,"0")`), guaranteeing uniqueness. Using the `SPEAKER_NN` form keeps `speakerName`/`speakerKey`/`displayName`/`colorForKey` working unchanged. Assign that label to the turn's segments, then `buildTranscript()` — the new speaker appears in the legend and color registry automatically.
+
+### 4. Interop rules
+- **Reassignment vs. global rename are orthogonal, both routed through `speakerKey`/`displayName`.** Reassignment changes WHICH speaker (`seg.speaker` label) a turn belongs to. The existing `#speakerLegend` + `speakerNames[speakerKey(label)]` still controls each speaker's DISPLAY NAME everywhere. After a reassignment the legend is rebuilt (via `buildTranscript()` → `renderLegend`) from the new distinct set; any custom name a speaker already had is preserved because `speakerNames` is keyed by `speakerKey` and is NOT reset inside `buildTranscript()`. Renaming a speaker after a reassignment still updates all its turns (legend `input` handler → `refreshSpeakerName`).
+- **Markdown export reflects corrections:** `buildTranscript()` rebuilds `lastResult.turns` from `groupSegments(workingSegments)` on every call, so `buildMarkdown`/`downloadMarkdown` (~1434/1467) emit corrected assignments + current names (it already reads `displayName(turn.label)` and `turn.segs` at click time).
+- **No leakage across runs:** `renderResults(data)` resets `speakerNames = {}`, `speakerNodes = {}`, `lastResult = null`, and rebuilds `workingSegments` from the fresh `data.segments` before the first `buildTranscript()`. A new transcription therefore drops all prior reassignments and renames.
+
+**Shared markers T3 can assert (stable):** `id="uploadPreview"`, `id="uploadPreviewAudio"`, `createObjectURL`, `data-turn-idx`, `workingSegments`, and the Hebrew new-speaker option string `דובר/ת חדש/ה`.
+
+**Files touched:** this work-log only. No source edited. **Blockers:** none.

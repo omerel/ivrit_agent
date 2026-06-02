@@ -1,0 +1,1852 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>תמלול עברי · מקומי</title>
+    <style>
+      /* ============================================================
+         OFFLINE-ONLY. No remote fonts, no CDNs, no external assets.
+         System font stack with Hebrew fallbacks. All visuals are
+         hand-built with CSS + inline SVG. POSTs to relative /transcribe.
+         ============================================================ */
+
+      :root {
+        --ink:        #0e1116;   /* deep cool ink */
+        --ink-2:      #11151c;
+        --panel:      #161b23;   /* raised surface */
+        --panel-2:    #1c222c;   /* highest surface */
+        --line:       #283039;   /* hairline */
+        --line-soft:  #1f262f;
+        --paper:      #e7ecf2;   /* primary text — cool off-white */
+        --paper-dim:  #9aa6b4;   /* secondary text */
+        --paper-faint:#647082;   /* tertiary / labels */
+        --accent:     #2dd4bf;   /* primary accent — refined teal */
+        --accent-2:   #5eead4;   /* lighter teal for highlights */
+        --accent-ink: #04140f;   /* text on accent fill */
+        --accent-glow:rgba(45,212,191,.22);
+        --ok:         #4ade80;
+        --bad:        #f87171;
+        --speak-a:    #2dd4bf;
+        --speak-b:    #60a5fa;
+        --speak-c:    #c084fc;
+        --speak-d:    #fbbf24;
+        --speak-e:    #f472b6;
+        --speak-f:    #34d399;
+        --serif: "Hoefler Text", "Frank Ruhl Libre", "Times New Roman", "David", Georgia, serif;
+        --sans: "Segoe UI", "Helvetica Neue", Arial, "Noto Sans Hebrew", "Arial Hebrew", sans-serif;
+        --mono: "SF Mono", "Menlo", "Consolas", "Courier New", monospace;
+        --radius: 12px;
+        --radius-sm: 9px;
+        --shadow: 0 20px 50px -30px rgba(0,0,0,.85);
+        --shadow-soft: 0 1px 0 rgba(255,255,255,.025), 0 14px 34px -26px rgba(0,0,0,.8);
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body { height: 100%; }
+
+      body {
+        margin: 0;
+        font-family: var(--sans);
+        color: var(--paper);
+        background-color: var(--ink);
+        background-image:
+          radial-gradient(1100px 620px at 92% -10%, rgba(45,212,191,.10), transparent 62%),
+          radial-gradient(820px 540px at -8% 6%, rgba(96,165,250,.07), transparent 58%),
+          linear-gradient(180deg, #0f131a 0%, #0e1116 46%, #0b0e13 100%);
+        background-attachment: fixed;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+        position: relative;
+        overflow-x: hidden;
+      }
+
+      /* thin precision accent rule across the very top */
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        height: 2px;
+        z-index: 3;
+        background: linear-gradient(90deg, transparent, var(--accent) 22%, var(--accent-2) 50%, var(--accent) 78%, transparent);
+        opacity: .85;
+      }
+
+      /* faint precision grid overlay — pure CSS, fully offline */
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        opacity: .6;
+        z-index: 0;
+        background-image:
+          linear-gradient(rgba(255,255,255,.014) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,.014) 1px, transparent 1px);
+        background-size: 38px 38px, 38px 38px;
+        mask-image: radial-gradient(900px 700px at 70% 0%, #000 0%, transparent 75%);
+        -webkit-mask-image: radial-gradient(900px 700px at 70% 0%, #000 0%, transparent 75%);
+      }
+
+      .wrap {
+        position: relative;
+        z-index: 1;
+        max-width: 860px;
+        margin: 0 auto;
+        padding: clamp(30px, 5vw, 68px) clamp(18px, 4vw, 40px) 96px;
+      }
+
+      /* ---------- Masthead ---------- */
+      header.mast {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding-bottom: 26px;
+        border-bottom: 1px solid var(--line);
+        margin-bottom: 40px;
+        animation: rise .7s cubic-bezier(.2,.7,.2,1) both;
+      }
+      .seal {
+        flex: 0 0 auto;
+        width: 52px; height: 52px;
+        display: grid; place-items: center;
+        border-radius: 13px;
+        border: 1px solid var(--line);
+        background:
+          linear-gradient(155deg, rgba(45,212,191,.16), transparent 55%),
+          var(--panel-2);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 8px 22px -16px rgba(0,0,0,.9);
+        color: var(--accent-2);
+      }
+      .seal svg { width: 28px; height: 28px; display: block; }
+      .mast-titles { flex: 1 1 auto; min-width: 0; }
+      .kicker {
+        font-family: var(--mono);
+        font-size: .68rem;
+        letter-spacing: .26em;
+        text-transform: uppercase;
+        color: var(--paper-faint);
+        font-weight: 500;
+        margin: 0 0 7px;
+      }
+      .kicker .live {
+        color: var(--accent);
+        margin-inline-start: 2px;
+      }
+      h1 {
+        font-family: var(--serif);
+        font-weight: 600;
+        font-size: clamp(1.85rem, 4.4vw, 2.85rem);
+        line-height: 1.04;
+        margin: 0 0 8px;
+        letter-spacing: -.015em;
+        color: var(--paper);
+      }
+      h1 .accent { color: var(--accent); }
+      .lede {
+        margin: 0;
+        color: var(--paper-dim);
+        font-size: clamp(.92rem, 1.9vw, 1rem);
+        max-width: 50ch;
+        line-height: 1.6;
+      }
+
+      /* ---------- Card / drop zone ---------- */
+      .card {
+        background:
+          linear-gradient(180deg, rgba(255,255,255,.018), transparent 22%),
+          var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-soft);
+        overflow: hidden;
+        animation: rise .8s .08s cubic-bezier(.2,.7,.2,1) both;
+      }
+
+      .dropzone {
+        position: relative;
+        padding: clamp(30px, 5vw, 52px) clamp(20px, 4vw, 44px);
+        text-align: center;
+        cursor: pointer;
+        transition: background .25s ease, box-shadow .25s ease;
+        outline: none;
+      }
+      .dropzone::before {
+        content: "";
+        position: absolute;
+        inset: 14px;
+        border: 1px dashed var(--line);
+        border-radius: 10px;
+        transition: border-color .25s ease, background .25s ease;
+        pointer-events: none;
+      }
+      .dropzone:hover::before,
+      .dropzone:focus-visible::before { border-color: var(--paper-faint); }
+      .dropzone:focus-visible {
+        box-shadow: inset 0 0 0 2px var(--accent-glow);
+      }
+      .dropzone.drag::before {
+        border-color: var(--accent);
+        border-style: solid;
+        background: var(--accent-glow);
+      }
+      .dropzone.drag {
+        box-shadow: inset 0 0 70px -28px var(--accent-glow);
+      }
+
+      .dz-icon {
+        width: 58px; height: 58px;
+        margin: 0 auto 16px;
+        display: grid; place-items: center;
+        border-radius: 14px;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        color: var(--accent-2);
+        transition: transform .35s cubic-bezier(.2,.8,.2,1), border-color .25s;
+      }
+      .dropzone:hover .dz-icon { transform: translateY(-3px); border-color: var(--accent); }
+      .dz-icon svg { width: 28px; height: 28px; }
+
+      .dz-title {
+        font-family: var(--serif);
+        font-size: 1.24rem;
+        font-weight: 600;
+        margin: 0 0 5px;
+        color: var(--paper);
+      }
+      .dz-sub { margin: 0; color: var(--paper-dim); font-size: .9rem; }
+      .dz-pick {
+        color: var(--accent-2);
+        text-decoration: underline;
+        text-decoration-color: var(--accent-glow);
+        text-underline-offset: 3px;
+        font-weight: 600;
+      }
+      .dropzone:hover .dz-pick { text-decoration-color: var(--accent); }
+      .dz-hint {
+        margin-top: 14px;
+        font-family: var(--mono);
+        font-size: .72rem;
+        letter-spacing: .03em;
+        color: var(--paper-faint);
+      }
+      input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+      /* ---------- Record panel ---------- */
+      .recpanel {
+        border-top: 1px solid var(--line);
+        background:
+          linear-gradient(180deg, rgba(255,255,255,.012), transparent 30%),
+          var(--ink-2);
+        padding: 20px clamp(20px, 4vw, 44px) 22px;
+      }
+      .rec-head {
+        display: flex; align-items: center; gap: 11px;
+        margin-bottom: 16px;
+      }
+      .rec-head .rec-kick {
+        font-family: var(--mono);
+        font-size: .68rem;
+        letter-spacing: .22em;
+        text-transform: uppercase;
+        color: var(--paper-faint);
+        font-weight: 500;
+      }
+      .rec-head .rule { flex: 1 1 auto; height: 1px; background: var(--line); }
+      .rec-head .rec-mic {
+        flex: 0 0 auto; color: var(--accent-2);
+        width: 18px; height: 18px; display: grid; place-items: center;
+      }
+      .rec-head .rec-mic svg { width: 18px; height: 18px; }
+
+      .rec-controls {
+        display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      }
+      .btn-rec {
+        font-family: var(--sans);
+        font-size: .92rem; font-weight: 600;
+        border-radius: var(--radius-sm);
+        padding: 10px 18px;
+        cursor: pointer;
+        display: inline-flex; align-items: center; gap: 9px;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        color: var(--paper);
+        transition: transform .15s ease, border-color .2s, background .2s, color .2s, opacity .2s;
+      }
+      .btn-rec svg { width: 16px; height: 16px; }
+      .btn-rec:hover:not(:disabled) { border-color: var(--paper-faint); transform: translateY(-1px); }
+      .btn-rec:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+      .btn-rec:disabled { opacity: .4; cursor: not-allowed; }
+
+      .btn-rec.is-record { border-color: rgba(248,113,113,.4); color: #f6c9c9; }
+      .btn-rec.is-record:hover:not(:disabled) {
+        border-color: var(--bad); background: rgba(248,113,113,.1); color: #ffdada;
+      }
+      .btn-rec.is-record .dot-rec {
+        width: 9px; height: 9px; border-radius: 50%; background: var(--bad);
+        box-shadow: 0 0 0 0 rgba(248,113,113,.6);
+      }
+      .btn-rec.is-stop { border-color: var(--line); }
+      .btn-rec.is-stop .sq { width: 9px; height: 9px; border-radius: 2px; background: var(--bad); }
+
+      .rec-status {
+        display: inline-flex; align-items: center; gap: 9px;
+        font-family: var(--mono); font-size: .8rem;
+        color: var(--paper-faint); letter-spacing: .04em;
+        margin-inline-start: 2px;
+      }
+      .rec-status.recording { color: #f6c9c9; }
+      .rec-status .pulse {
+        width: 9px; height: 9px; border-radius: 50%; background: var(--bad);
+        display: none;
+        animation: recpulse 1.15s ease-in-out infinite;
+      }
+      .rec-status.recording .pulse { display: inline-block; }
+      @keyframes recpulse {
+        0%,100% { box-shadow: 0 0 0 0 rgba(248,113,113,.55); opacity: 1; }
+        50%      { box-shadow: 0 0 0 7px rgba(248,113,113,0); opacity: .7; }
+      }
+
+      .rec-preview {
+        display: none;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px dashed var(--line-soft);
+      }
+      .rec-preview.show { display: block; animation: fade .3s ease both; }
+      .rec-preview .pv-label {
+        font-family: var(--mono); font-size: .66rem; letter-spacing: .16em;
+        text-transform: uppercase; color: var(--paper-faint);
+        margin: 0 0 9px;
+      }
+      .rec-preview audio {
+        width: 100%; height: 38px; display: block;
+        border-radius: var(--radius-sm);
+        filter: saturate(.85);
+      }
+      .rec-preview .pv-actions {
+        display: flex; gap: 10px; flex-wrap: wrap; margin-top: 13px;
+      }
+
+      /* uploaded-file inline player — lives inside the filebar so it appears
+         whenever a file is selected (picker / drag-drop / used recording) and
+         stays visible alongside results. Mirrors the .rec-preview vocabulary
+         (dashed separator, mono uppercase pv-label, saturate-toned <audio>) so
+         the uploaded file and the recorded clip read as the same family. */
+      .upload-preview {
+        display: none;
+        flex: 1 1 100%;
+        margin-top: 4px;
+        padding-top: 14px;
+        border-top: 1px dashed var(--line-soft);
+        animation: fade .3s ease both;
+      }
+      .upload-preview.show { display: block; }
+      .upload-preview .pv-label {
+        font-family: var(--mono); font-size: .66rem; letter-spacing: .16em;
+        text-transform: uppercase; color: var(--paper-faint);
+        margin: 0 0 9px;
+      }
+      .upload-preview audio {
+        width: 100%; height: 38px; display: block;
+        border-radius: var(--radius-sm);
+        filter: saturate(.85);
+      }
+
+      /* selected file row */
+      .filebar {
+        display: none;
+        align-items: center;
+        gap: 14px;
+        padding: 16px clamp(20px, 4vw, 44px);
+        border-top: 1px solid var(--line);
+        background: var(--ink-2);
+        animation: fade .3s ease both;
+      }
+      .filebar.show { display: flex; }
+      .filebar .fi {
+        flex: 0 0 auto;
+        width: 40px; height: 40px;
+        border-radius: 10px;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        display: grid; place-items: center;
+        color: var(--accent-2);
+      }
+      .filebar .fi svg { width: 20px; height: 20px; }
+      .filemeta { flex: 1 1 auto; min-width: 0; text-align: start; }
+      .filename {
+        font-weight: 600;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        color: var(--paper);
+      }
+      .filesize { font-size: .8rem; color: var(--paper-dim); font-family: var(--mono); }
+      .clearbtn {
+        flex: 0 0 auto;
+        background: transparent;
+        border: 1px solid var(--line);
+        color: var(--paper-dim);
+        width: 34px; height: 34px; border-radius: 9px;
+        cursor: pointer; display: grid; place-items: center;
+        transition: border-color .2s, color .2s, background .2s;
+      }
+      .clearbtn:hover { color: var(--bad); border-color: var(--bad); background: rgba(226,103,78,.08); }
+      .clearbtn svg { width: 16px; height: 16px; }
+
+      /* action bar */
+      .actions {
+        padding: 18px clamp(20px, 4vw, 44px);
+        border-top: 1px solid var(--line);
+        display: flex; align-items: center; gap: 16px;
+        flex-wrap: wrap;
+      }
+      .btn {
+        font-family: var(--sans);
+        font-size: .98rem;
+        font-weight: 600;
+        letter-spacing: .005em;
+        border: none;
+        border-radius: var(--radius-sm);
+        padding: 12px 24px;
+        cursor: pointer;
+        display: inline-flex; align-items: center; gap: 10px;
+        transition: transform .15s ease, box-shadow .25s ease, filter .2s ease, opacity .2s;
+      }
+      .btn-primary {
+        color: var(--accent-ink);
+        background: linear-gradient(135deg, var(--accent-2), var(--accent));
+        box-shadow: 0 12px 26px -14px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,.32);
+      }
+      .btn-primary:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.06); }
+      .btn-primary:active:not(:disabled) { transform: translateY(0); }
+      .btn:disabled { opacity: .42; cursor: not-allowed; }
+      .btn:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+      .btn svg { width: 18px; height: 18px; }
+      .actions .note { color: var(--paper-faint); font-size: .8rem; }
+
+      /* ---------- States: error / loading / results ---------- */
+      .panel { margin-top: 26px; }
+
+      .alert {
+        display: none;
+        gap: 14px;
+        padding: 15px 17px;
+        border-radius: var(--radius);
+        border: 1px solid rgba(248,113,113,.36);
+        border-inline-start: 3px solid var(--bad);
+        background: linear-gradient(180deg, rgba(248,113,113,.10), rgba(248,113,113,.035));
+        color: #f6d8d8;
+        align-items: flex-start;
+        animation: rise .4s ease both;
+        margin-top: 16px;
+      }
+      .alert.show { display: flex; }
+      .alert .ai {
+        flex: 0 0 auto; color: var(--bad);
+        width: 22px; height: 22px; margin-top: 1px;
+      }
+      .alert .ai svg { width: 22px; height: 22px; }
+      .alert strong { display: block; color: #ffe2e2; margin-bottom: 2px; font-size: .95rem; }
+      .alert span { color: #ecc9c9; font-size: .9rem; }
+
+      /* loading */
+      .loading { display: none; text-align: center; padding: 44px 20px 40px; animation: fade .4s ease both; }
+      .loading.show { display: block; }
+      .wave {
+        display: inline-flex; align-items: flex-end; gap: 5px; height: 56px; margin-bottom: 20px;
+      }
+      .wave i {
+        width: 5px; border-radius: 4px;
+        background: linear-gradient(180deg, var(--accent-2), var(--accent));
+        animation: bounce 1.1s ease-in-out infinite;
+      }
+      .wave i:nth-child(1){height:18px;animation-delay:0s}
+      .wave i:nth-child(2){height:40px;animation-delay:.09s}
+      .wave i:nth-child(3){height:26px;animation-delay:.18s}
+      .wave i:nth-child(4){height:52px;animation-delay:.27s}
+      .wave i:nth-child(5){height:32px;animation-delay:.36s}
+      .wave i:nth-child(6){height:46px;animation-delay:.45s}
+      .wave i:nth-child(7){height:22px;animation-delay:.54s}
+      .wave i:nth-child(8){height:38px;animation-delay:.63s}
+      .wave i:nth-child(9){height:28px;animation-delay:.72s}
+      .loading h3 { font-family: var(--serif); font-weight: 600; font-size: 1.28rem; margin: 0 0 6px; color: var(--paper); }
+      .loading p { margin: 0; color: var(--paper-dim); font-size: .92rem; }
+      .loading .elapsed {
+        font-family: var(--mono); color: var(--accent-2); font-size: .82rem;
+        letter-spacing: .08em; margin-top: 12px;
+      }
+
+      /* ---------- Results ---------- */
+      .results { display: none; animation: rise .5s ease both; }
+      .results.show { display: block; }
+
+      .summary {
+        display: flex; flex-wrap: wrap; gap: 12px;
+        padding-bottom: 22px; margin-bottom: 6px;
+        border-bottom: 1px solid var(--line);
+      }
+      .summary .res-title {
+        flex: 1 1 100%;
+        font-family: var(--serif);
+        font-weight: 600;
+        font-size: 1.45rem;
+        margin: 0 0 6px;
+        color: var(--paper);
+        display: flex; align-items: center; gap: 10px;
+      }
+      .summary .res-title svg { width: 21px; height: 21px; color: var(--ok); }
+      .stat {
+        display: inline-flex; flex-direction: column; gap: 3px;
+        padding: 11px 16px;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        min-width: 116px;
+      }
+      .stat .k {
+        font-family: var(--mono);
+        font-size: .64rem; letter-spacing: .16em; text-transform: uppercase; color: var(--paper-faint);
+      }
+      .stat .v { font-family: var(--serif); font-weight: 600; font-size: 1.3rem; color: var(--accent-2); }
+
+      /* download-Markdown button — sits in the results header, uses the
+         established secondary-button vocabulary (panel surface, hairline,
+         teal focus) so it complements rather than competes with the primary CTA */
+      .summary .res-title { display: flex; align-items: center; gap: 10px; }
+      .res-title .rt-spacer { flex: 1 1 auto; }
+      .btn-md {
+        display: none;
+        flex: 0 0 auto;
+        font-family: var(--sans);
+        font-size: .82rem; font-weight: 600;
+        letter-spacing: .005em;
+        border-radius: var(--radius-sm);
+        padding: 8px 14px;
+        cursor: pointer;
+        align-items: center; gap: 8px;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        color: var(--paper);
+        transition: transform .15s ease, border-color .2s, background .2s, color .2s, opacity .2s;
+      }
+      .btn-md.show { display: inline-flex; }
+      .btn-md svg { width: 15px; height: 15px; color: var(--accent-2); }
+      .btn-md:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); color: var(--paper); }
+      .btn-md:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+      .btn-md:disabled { opacity: .4; cursor: not-allowed; }
+
+      /* ---------- Speaker legend (editable per-speaker names) ---------- */
+      .legend {
+        display: none;
+        margin-top: 22px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background:
+          linear-gradient(180deg, rgba(255,255,255,.012), transparent 36%),
+          var(--ink-2);
+        overflow: hidden;
+        animation: rise .5s ease both;
+      }
+      .legend.show { display: block; }
+      .legend-head {
+        display: flex; align-items: center; gap: 11px;
+        padding: 13px clamp(15px, 3vw, 20px);
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .legend-head .lg-kick {
+        font-family: var(--mono);
+        font-size: .66rem; letter-spacing: .2em; text-transform: uppercase;
+        color: var(--paper-faint); font-weight: 500;
+      }
+      .legend-head .lg-ic { flex: 0 0 auto; color: var(--accent-2); width: 16px; height: 16px; display: grid; place-items: center; }
+      .legend-head .lg-ic svg { width: 16px; height: 16px; }
+      .legend-head .rule { flex: 1 1 auto; height: 1px; background: var(--line-soft); }
+
+      .legend-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+        gap: 10px;
+        padding: 14px clamp(15px, 3vw, 20px) 16px;
+      }
+      .lg-row {
+        display: flex; align-items: center; gap: 11px;
+        padding: 9px 12px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        transition: border-color .2s ease;
+      }
+      .lg-row:focus-within { border-color: var(--paper-faint); }
+      .lg-swatch {
+        flex: 0 0 auto;
+        width: 18px; height: 18px; border-radius: 6px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.3);
+      }
+      .lg-field { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+      .lg-field .lg-lab {
+        font-family: var(--mono);
+        font-size: .58rem; letter-spacing: .14em; text-transform: uppercase;
+        color: var(--paper-faint);
+      }
+      .lg-field input {
+        font-family: var(--sans);
+        font-size: .95rem; font-weight: 700;
+        color: var(--paper);
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid transparent;
+        padding: 1px 0 2px;
+        width: 100%;
+        transition: border-color .2s ease;
+      }
+      .lg-field input::placeholder { color: var(--paper-faint); font-weight: 600; }
+      .lg-field input:hover { border-bottom-color: var(--line); }
+      .lg-field input:focus {
+        outline: none;
+        border-bottom-color: var(--accent);
+      }
+      .lg-edit { flex: 0 0 auto; color: var(--paper-faint); width: 14px; height: 14px; opacity: .6; }
+      .lg-edit svg { width: 14px; height: 14px; display: block; }
+
+      .transcript { margin-top: 26px; display: flex; flex-direction: column; gap: 18px; }
+
+      .turn {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 14px;
+        align-items: start;
+        animation: rise .45s ease both;
+      }
+      .turn .rail {
+        flex: 0 0 auto;
+        display: flex; flex-direction: column; align-items: center; gap: 6px;
+        padding-top: 2px;
+      }
+      .avatar {
+        width: 40px; height: 40px; border-radius: 11px;
+        display: grid; place-items: center;
+        font-family: var(--mono); font-weight: 600; font-size: 1rem;
+        color: var(--accent-ink);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.28);
+      }
+      .thread { width: 1px; flex: 1 1 auto; background: var(--line); border-radius: 2px; min-height: 6px; }
+
+      .bubble {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        border-start-start-radius: 4px;
+        border-inline-start-width: 2px;
+        padding: 12px 16px 14px;
+        position: relative;
+      }
+      .bubble .meta {
+        display: flex; align-items: baseline; gap: 12px;
+        margin-bottom: 8px; flex-wrap: wrap;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .bubble .who { font-weight: 700; font-size: .9rem; letter-spacing: .005em; }
+      .bubble .time {
+        font-family: var(--mono); font-size: .72rem;
+        color: var(--paper-faint);
+        letter-spacing: .03em;
+      }
+
+      /* per-turn speaker REASSIGNMENT control (feature 2) — fixes a diarization
+         mistake by moving this turn's segments to a different / new speaker.
+         Distinct from the global rename legend. Sits at the end of the .meta row,
+         reading as a quiet utility (mono label + hairline select) so it never
+         competes with the speaker name; teal focus ties it to the theme. */
+      .reassign {
+        display: inline-flex; align-items: center; gap: 7px;
+        margin-inline-start: auto;
+      }
+      .reassign .ra-lab {
+        font-family: var(--mono);
+        font-size: .58rem; letter-spacing: .14em; text-transform: uppercase;
+        color: var(--paper-faint);
+        white-space: nowrap;
+      }
+      .reassign select {
+        font-family: var(--sans);
+        font-size: .76rem; font-weight: 600;
+        color: var(--paper-dim);
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 3px 8px;
+        max-width: 14ch;
+        cursor: pointer;
+        transition: border-color .2s ease, color .2s ease, background .2s ease;
+      }
+      .reassign select:hover { border-color: var(--paper-faint); color: var(--paper); }
+      .reassign select:focus-visible {
+        outline: 2px solid var(--accent-2); outline-offset: 2px;
+        border-color: var(--accent);
+      }
+      .reassign select option { color: var(--paper); background: var(--panel-2); }
+      .bubble .line {
+        font-size: 1.02rem;
+        line-height: 1.78;
+        color: var(--paper);
+        margin: 4px 0;
+      }
+      .bubble .line:not(:last-child) { padding-bottom: 6px; border-bottom: 1px dashed rgba(255,255,255,.045); }
+
+      .empty-note {
+        text-align: center; color: var(--paper-dim);
+        padding: 26px; font-style: italic;
+      }
+
+      footer.foot {
+        margin-top: 54px; padding-top: 22px;
+        border-top: 1px solid var(--line);
+        color: var(--paper-faint);
+        font-family: var(--mono); font-size: .74rem; letter-spacing: .02em;
+        display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+      }
+      footer.foot .dot { color: var(--accent); }
+
+      /* ---------- Animations ---------- */
+      @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+      @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes bounce { 0%,100% { transform: scaleY(.4); opacity:.6; } 50% { transform: scaleY(1); opacity:1; } }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+      }
+
+      @media (max-width: 520px) {
+        .turn { grid-template-columns: auto 1fr; gap: 10px; }
+        .avatar { width: 36px; height: 36px; font-size: .95rem; }
+        .stat { flex: 1 1 calc(50% - 6px); min-width: 0; }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main class="wrap">
+      <!-- ===================== Masthead ===================== -->
+      <header class="mast">
+        <div class="seal" aria-hidden="true">
+          <!-- microphone / soundwave seal -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="2" width="6" height="11" rx="3"/>
+            <path d="M5 10a7 7 0 0 0 14 0"/>
+            <path d="M12 17v4M8 21h8"/>
+          </svg>
+        </div>
+        <div class="mast-titles">
+          <p class="kicker">תמלול אוטומטי <span class="live">· מקומי</span></p>
+          <h1>תמלול <span class="accent">בעברית</span></h1>
+          <p class="lede">העלו קובץ שמע והמערכת תזהה דוברים ותפיק תמלול מסודר — הכול מקומית, ללא חיבור לאינטרנט.</p>
+        </div>
+      </header>
+
+      <!-- ===================== Upload card ===================== -->
+      <section class="card" aria-label="העלאת קובץ שמע">
+        <div id="dropzone" class="dropzone" role="button" tabindex="0"
+             aria-label="גררו לכאן קובץ שמע או לחצו לבחירה">
+          <div class="dz-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 16V4M12 4l-4 4M12 4l4 4"/>
+              <path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>
+            </svg>
+          </div>
+          <p class="dz-title">גררו לכאן קובץ שמע</p>
+          <p class="dz-sub">או <span class="dz-pick">בחרו קובץ מהמחשב</span></p>
+          <p class="dz-hint">קבצי שמע נתמכים · עד 25 מ״ב</p>
+        </div>
+
+        <input type="file" id="fileInput" accept="audio/*" />
+
+        <!-- ===================== Record panel ===================== -->
+        <div id="recordPanel" class="recpanel" aria-label="הקלטה ישירה דרך המיקרופון">
+          <div class="rec-head">
+            <span class="rec-mic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="2" width="6" height="11" rx="3"/>
+                <path d="M5 10a7 7 0 0 0 14 0"/>
+                <path d="M12 17v4M8 21h8"/>
+              </svg>
+            </span>
+            <span class="rec-kick">או הקליטו ישירות</span>
+            <span class="rule" aria-hidden="true"></span>
+          </div>
+
+          <div class="rec-controls">
+            <button type="button" class="btn-rec is-record" id="recordBtn" aria-label="התחלת הקלטה דרך המיקרופון">
+              <span class="dot-rec" aria-hidden="true"></span>
+              הקלטה
+            </button>
+            <button type="button" class="btn-rec is-stop" id="stopBtn" aria-label="עצירת ההקלטה" disabled>
+              <span class="sq" aria-hidden="true"></span>
+              עצירה
+            </button>
+            <span class="rec-status" id="recStatus" role="status" aria-live="polite">
+              <span class="pulse" aria-hidden="true"></span>
+              <span id="recStatusText">מוכן להקלטה</span>
+            </span>
+          </div>
+
+          <div class="rec-preview" id="recPreviewWrap">
+            <p class="pv-label">תצוגה מקדימה של ההקלטה</p>
+            <audio id="recPreview" controls preload="metadata" aria-label="האזנה להקלטה שנקלטה"></audio>
+            <div class="pv-actions">
+              <button type="button" class="btn-rec" id="recUse" aria-label="שימוש בהקלטה זו לתמלול">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14M13 6l6 6-6 6"/>
+                </svg>
+                השתמשו בהקלטה לתמלול
+              </button>
+              <button type="button" class="btn-rec" id="recSave" aria-label="שמירת ההקלטה למחשב">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 4v12M12 16l-4-4M12 16l4-4"/>
+                  <path d="M4 20h16"/>
+                </svg>
+                שמרו את ההקלטה
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="filebar" class="filebar">
+          <div class="fi" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>
+            </svg>
+          </div>
+          <div class="filemeta">
+            <div class="filename" id="fileName">—</div>
+            <div class="filesize" id="fileSize"></div>
+          </div>
+          <button type="button" class="clearbtn" id="clearBtn" aria-label="הסרת הקובץ">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 6l12 12M18 6L6 18"/>
+            </svg>
+          </button>
+
+          <!-- inline player for the UPLOADED file (feature 1) — client-side
+               object URL only, fully offline, distinct from #recPreview -->
+          <div class="upload-preview" id="uploadPreview">
+            <p class="pv-label">האזנה לקובץ שהועלה</p>
+            <audio id="uploadPreviewAudio" controls preload="metadata" aria-label="האזנה לקובץ השמע שהועלה"></audio>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn btn-primary" id="submitBtn" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6"/>
+            </svg>
+            התחילו בתמלול
+          </button>
+          <span class="note">העיבוד עשוי להימשך מספר דקות, בהתאם לאורך ההקלטה.</span>
+        </div>
+      </section>
+
+      <!-- ===================== Inline (pre-send) alert ===================== -->
+      <div id="alert" class="alert" role="alert" aria-live="assertive">
+        <span class="ai" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>
+          </svg>
+        </span>
+        <div>
+          <strong id="alertTitle">אירעה שגיאה</strong>
+          <span id="alertMsg"></span>
+        </div>
+      </div>
+
+      <!-- ===================== Loading ===================== -->
+      <div id="loading" class="loading panel" aria-live="polite">
+        <div class="wave" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <h3>מתמללים את ההקלטה…</h3>
+        <p>המערכת מזהה דיבור ומפרידה בין הדוברים. אפשר להמתין בסבלנות.</p>
+        <div class="elapsed" id="elapsed">00:00</div>
+      </div>
+
+      <!-- ===================== Results ===================== -->
+      <div id="results" class="results panel" aria-live="polite">
+        <div class="summary">
+          <h2 class="res-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6 9 17l-5-5"/>
+            </svg>
+            התמלול מוכן
+            <span class="rt-spacer" aria-hidden="true"></span>
+            <button type="button" class="btn-md" id="downloadMdBtn" aria-label="הורדת התמלול כקובץ Markdown" title="הורדת התמלול כקובץ Markdown" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 4v12M12 16l-4-4M12 16l4-4"/>
+                <path d="M4 20h16"/>
+              </svg>
+              הורדה כ־Markdown
+            </button>
+          </h2>
+          <div class="stat"><span class="k">שפה</span><span class="v" id="statLang">—</span></div>
+          <div class="stat"><span class="k">מספר דוברים</span><span class="v" id="statSpeakers">—</span></div>
+          <div class="stat"><span class="k">מקטעים</span><span class="v" id="statSegments">—</span></div>
+        </div>
+
+        <!-- editable per-speaker legend -->
+        <div id="speakerLegend" class="legend" aria-label="שמות הדוברים — ניתן לעריכה">
+          <div class="legend-head">
+            <span class="lg-ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/>
+                <path d="M16 6.2a3 3 0 0 1 0 5.6M18.5 19a5 5 0 0 0-3.2-4.7"/>
+              </svg>
+            </span>
+            <span class="lg-kick">שמות הדוברים · לחצו כדי לערוך</span>
+            <span class="rule" aria-hidden="true"></span>
+          </div>
+          <div class="legend-grid" id="speakerLegendGrid"></div>
+        </div>
+
+        <div class="transcript" id="transcript"></div>
+      </div>
+
+      <footer class="foot">
+        <span>תמלול עברי · עובד <span class="dot">●</span> במצב לא־מקוון לחלוטין</span>
+        <span>המידע אינו נשלח לשום שרת חיצוני</span>
+      </footer>
+    </main>
+
+    <script>
+      "use strict";
+
+      (function () {
+        var MAX_UPLOAD_BYTES = 26214400; // 25 MiB — must match settings.MAX_UPLOAD_BYTES
+
+        // Hebrew speaker labels: SPEAKER_00 -> "דובר/ת 1", UNKNOWN -> "לא מזוהה"
+        var HEBREW_DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+        var SPEAKER_COLORS = [
+          "var(--speak-a)", "var(--speak-b)", "var(--speak-c)",
+          "var(--speak-d)", "var(--speak-e)", "var(--speak-f)"
+        ];
+
+        var el = {
+          dropzone:   document.getElementById("dropzone"),
+          fileInput:  document.getElementById("fileInput"),
+          filebar:    document.getElementById("filebar"),
+          fileName:   document.getElementById("fileName"),
+          fileSize:   document.getElementById("fileSize"),
+          uploadPreview:      document.getElementById("uploadPreview"),
+          uploadPreviewAudio: document.getElementById("uploadPreviewAudio"),
+          clearBtn:   document.getElementById("clearBtn"),
+          submitBtn:  document.getElementById("submitBtn"),
+          alert:      document.getElementById("alert"),
+          alertTitle: document.getElementById("alertTitle"),
+          alertMsg:   document.getElementById("alertMsg"),
+          loading:    document.getElementById("loading"),
+          elapsed:    document.getElementById("elapsed"),
+          results:    document.getElementById("results"),
+          statLang:   document.getElementById("statLang"),
+          statSpeakers: document.getElementById("statSpeakers"),
+          statSegments: document.getElementById("statSegments"),
+          transcript: document.getElementById("transcript"),
+          speakerLegend: document.getElementById("speakerLegend"),
+          speakerLegendGrid: document.getElementById("speakerLegendGrid"),
+          downloadMdBtn: document.getElementById("downloadMdBtn"),
+          recordBtn:    document.getElementById("recordBtn"),
+          stopBtn:      document.getElementById("stopBtn"),
+          recStatus:    document.getElementById("recStatus"),
+          recStatusText:document.getElementById("recStatusText"),
+          recPreviewWrap: document.getElementById("recPreviewWrap"),
+          recPreview:   document.getElementById("recPreview"),
+          recUse:       document.getElementById("recUse"),
+          recSave:      document.getElementById("recSave")
+        };
+
+        var selectedFile = null;
+        var busy = false;
+        var elapsedTimer = null;
+
+        // ---------- helpers ----------
+        function fmtBytes(n) {
+          if (n < 1024) return n + " ב׳";
+          if (n < 1048576) return (n / 1024).toFixed(1) + " ק״ב";
+          return (n / 1048576).toFixed(2) + " מ״ב";
+        }
+
+        function fmtTime(sec) {
+          if (sec == null || isNaN(sec) || sec < 0) sec = 0;
+          var total = Math.floor(sec);
+          var m = Math.floor(total / 60);
+          var s = total % 60;
+          var pad = function (x) { return x < 10 ? "0" + x : "" + x; };
+          if (m >= 60) {
+            var h = Math.floor(m / 60);
+            return h + ":" + pad(m % 60) + ":" + pad(s);
+          }
+          return pad(m) + ":" + pad(s);
+        }
+
+        function speakerName(label) {
+          if (label == null || label === "") return "דובר/ת לא מזוהה";
+          if (label === "UNKNOWN") return "דובר/ת לא מזוהה";
+          var m = /^SPEAKER[_\s-]?(\d+)$/i.exec(String(label));
+          if (m) {
+            var idx = parseInt(m[1], 10);
+            return "דובר/ת " + (HEBREW_DIGITS[idx] || (idx + 1));
+          }
+          return String(label);
+        }
+
+        function speakerKey(label) {
+          return (label == null || label === "") ? "__none__" : String(label);
+        }
+
+        // ---------- shared speaker-name state (read by legend render + MD export) ----------
+        // speakerNames[ speakerKey(label) ] = customName (string). Reset per run in renderResults.
+        var speakerNames = {};
+
+        // Single display-name lookup used EVERYWHERE a speaker name is shown:
+        // custom name if set & non-empty, else the Hebrew default.
+        function displayName(label) {
+          var key = speakerKey(label);
+          var custom = speakerNames[key];
+          return (custom != null && custom !== "") ? custom : speakerName(label);
+        }
+
+        // initial char shown in the avatar for a given display name
+        function avatarInitial(name) {
+          return name.replace(/[^0-9]/g, "") || name.charAt(0) || "?";
+        }
+
+        function escapeText(t) {
+          var d = document.createElement("div");
+          d.textContent = t == null ? "" : String(t);
+          return d.innerHTML;
+        }
+
+        // ---------- visibility state machine ----------
+        function show(node, on) { node.classList.toggle("show", !!on); }
+
+        function clearStates() {
+          show(el.alert, false);
+          show(el.loading, false);
+          show(el.results, false);
+        }
+
+        function showError(title, msg) {
+          clearStates();
+          el.alertTitle.textContent = title || "אירעה שגיאה";
+          el.alertMsg.textContent = msg || "";
+          show(el.alert, true);
+        }
+
+        // ---------- file selection ----------
+        // object URL backing the inline player for the UPLOADED file. Created on
+        // accept, revoked when a new file is selected / cleared / on beforeunload.
+        var uploadUrl = null;
+
+        function revokeUploadUrl() {
+          if (uploadUrl) { URL.revokeObjectURL(uploadUrl); uploadUrl = null; }
+        }
+
+        function setFile(file) {
+          show(el.alert, false);
+          if (!file) { clearFile(); return; }
+
+          if (file.size === 0) {
+            clearFile();
+            showError("הקובץ ריק", "הקובץ שנבחר אינו מכיל נתונים. בחרו קובץ שמע תקין.");
+            return;
+          }
+          if (file.size > MAX_UPLOAD_BYTES) {
+            clearFile();
+            showError(
+              "הקובץ גדול מדי",
+              "גודל הקובץ הוא " + fmtBytes(file.size) + ", והמגבלה היא 25 מ״ב. בחרו קובץ קטן יותר."
+            );
+            return;
+          }
+
+          selectedFile = file;
+          el.fileName.textContent = file.name;
+          el.fileSize.textContent = fmtBytes(file.size);
+          el.filebar.classList.add("show");
+          el.submitBtn.disabled = false;
+
+          // inline playback of the uploaded file (feature 1): revoke the previous
+          // URL first so repeated selections never leak, then load the new one.
+          revokeUploadUrl();
+          uploadUrl = URL.createObjectURL(file);
+          el.uploadPreviewAudio.src = uploadUrl;
+          el.uploadPreview.classList.add("show");
+        }
+
+        function clearFile() {
+          selectedFile = null;
+          el.fileInput.value = "";
+          el.filebar.classList.remove("show");
+          el.submitBtn.disabled = true;
+
+          revokeUploadUrl();
+          el.uploadPreviewAudio.removeAttribute("src");
+          el.uploadPreview.classList.remove("show");
+        }
+
+        // ---------- in-browser recording (getUserMedia + MediaRecorder) ----------
+        var recSupported = !!(navigator.mediaDevices &&
+                              navigator.mediaDevices.getUserMedia &&
+                              window.MediaRecorder);
+        var mediaRecorder = null;
+        var recStream = null;
+        var recChunks = [];
+        var recBlob = null;
+        var recBlobUrl = null;     // object URL for the <audio> preview
+        var recMime = "audio/webm";
+        var recTimer = null;
+
+        function setRecStatus(text, recording) {
+          el.recStatusText.textContent = text;
+          el.recStatus.classList.toggle("recording", !!recording);
+        }
+
+        function startRecTimer() {
+          var t0 = Date.now();
+          setRecStatus("מקליט… 00:00", true);
+          recTimer = window.setInterval(function () {
+            setRecStatus("מקליט… " + fmtTime((Date.now() - t0) / 1000), true);
+          }, 1000);
+        }
+        function stopRecTimer() {
+          if (recTimer) { window.clearInterval(recTimer); recTimer = null; }
+        }
+
+        function freeStream() {
+          if (recStream) {
+            recStream.getTracks().forEach(function (t) { t.stop(); });
+            recStream = null;
+          }
+        }
+
+        function revokeRecUrl() {
+          if (recBlobUrl) { URL.revokeObjectURL(recBlobUrl); recBlobUrl = null; }
+        }
+
+        function pickRecMime() {
+          // Prefer webm; gracefully fall back if the browser exposes canIsTypeSupported.
+          var candidates = ["audio/webm", "audio/webm;codecs=opus", "audio/ogg", "audio/mp4"];
+          if (window.MediaRecorder && MediaRecorder.isTypeSupported) {
+            for (var i = 0; i < candidates.length; i++) {
+              if (MediaRecorder.isTypeSupported(candidates[i])) return candidates[i];
+            }
+            return ""; // let the browser choose its default
+          }
+          return "audio/webm";
+        }
+
+        function extForMime(mime) {
+          if (/ogg/i.test(mime)) return "ogg";
+          if (/mp4|m4a|aac/i.test(mime)) return "m4a";
+          return "webm";
+        }
+
+        function startRecording() {
+          if (!recSupported) {
+            showError(
+              "הקלטה אינה נתמכת",
+              "הדפדפן הזה אינו תומך בהקלטה דרך המיקרופון. ניתן להעלות קובץ שמע במקום."
+            );
+            return;
+          }
+          if (mediaRecorder && mediaRecorder.state === "recording") return;
+
+          show(el.alert, false);
+          navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(function (stream) {
+              recStream = stream;
+              recChunks = [];
+              recBlob = null;
+
+              var chosen = pickRecMime();
+              var opts = chosen ? { mimeType: chosen } : undefined;
+              try {
+                mediaRecorder = opts ? new MediaRecorder(stream, opts) : new MediaRecorder(stream);
+              } catch (e) {
+                mediaRecorder = new MediaRecorder(stream);
+              }
+              recMime = mediaRecorder.mimeType || chosen || "audio/webm";
+
+              mediaRecorder.addEventListener("dataavailable", function (e) {
+                if (e.data && e.data.size > 0) recChunks.push(e.data);
+              });
+              mediaRecorder.addEventListener("stop", onRecStop);
+
+              mediaRecorder.start();
+              el.recordBtn.disabled = true;
+              el.stopBtn.disabled = false;
+              el.recPreviewWrap.classList.remove("show");
+              startRecTimer();
+            })
+            .catch(function (err) {
+              freeStream();
+              el.recordBtn.disabled = false;
+              el.stopBtn.disabled = true;
+              setRecStatus("מוכן להקלטה", false);
+              var denied = err && (err.name === "NotAllowedError" ||
+                                   err.name === "SecurityError" ||
+                                   err.name === "PermissionDeniedError");
+              if (denied) {
+                showError(
+                  "ההרשאה למיקרופון נדחתה",
+                  "כדי להקליט יש לאשר גישה למיקרופון בדפדפן. לחלופין ניתן להעלות קובץ שמע."
+                );
+              } else if (err && err.name === "NotFoundError") {
+                showError(
+                  "לא נמצא מיקרופון",
+                  "לא אותר התקן הקלטה במחשב. חברו מיקרופון או העלו קובץ שמע."
+                );
+              } else {
+                showError(
+                  "ההקלטה נכשלה",
+                  "לא ניתן היה להתחיל בהקלטה. נסו שוב או העלו קובץ שמע."
+                );
+              }
+            });
+        }
+
+        function stopRecording() {
+          if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            mediaRecorder.stop(); // triggers onRecStop
+          }
+        }
+
+        function onRecStop() {
+          stopRecTimer();
+          freeStream();
+          el.recordBtn.disabled = false;
+          el.stopBtn.disabled = true;
+
+          var type = recMime || "audio/webm";
+          recBlob = new Blob(recChunks, { type: type });
+          recChunks = [];
+
+          if (!recBlob || recBlob.size === 0) {
+            recBlob = null;
+            setRecStatus("מוכן להקלטה", false);
+            showError("ההקלטה ריקה", "לא נקלט שמע. ודאו שהמיקרופון פעיל ונסו שוב.");
+            return;
+          }
+
+          revokeRecUrl();
+          recBlobUrl = URL.createObjectURL(recBlob);
+          el.recPreview.src = recBlobUrl;
+          el.recPreviewWrap.classList.add("show");
+          setRecStatus("ההקלטה מוכנה · " + fmtBytes(recBlob.size), false);
+        }
+
+        function useRecording() {
+          if (!recBlob) {
+            showError("אין הקלטה", "הקליטו שמע לפני השימוש בו לתמלול.");
+            return;
+          }
+          var type = recBlob.type || "audio/webm";
+          var fname = "recording." + extForMime(type);
+          var file = new File([recBlob], fname, { type: type || "audio/webm" });
+          // Route through the EXISTING upload path: enforces the 25 MiB guard,
+          // fills the filebar, and enables the existing #submitBtn / submit().
+          setFile(file);
+          if (selectedFile) {
+            // setFile accepted it (within size limit) — point the user to submit.
+            el.filebar.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          }
+        }
+
+        function saveRecording() {
+          if (!recBlob) {
+            showError("אין הקלטה", "הקליטו שמע לפני השמירה.");
+            return;
+          }
+          var type = recBlob.type || "audio/webm";
+          var url = URL.createObjectURL(recBlob);
+          var a = document.createElement("a");
+          a.href = url;
+          a.download = "recording." + extForMime(type);
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+        }
+
+        // ---------- elapsed clock ----------
+        function startElapsed() {
+          var t0 = Date.now();
+          el.elapsed.textContent = "00:00";
+          elapsedTimer = window.setInterval(function () {
+            el.elapsed.textContent = fmtTime((Date.now() - t0) / 1000);
+          }, 1000);
+        }
+        function stopElapsed() {
+          if (elapsedTimer) { window.clearInterval(elapsedTimer); elapsedTimer = null; }
+        }
+
+        // ---------- render results ----------
+        function groupSegments(segments) {
+          // Group consecutive segments by speaker into "turns".
+          var turns = [];
+          var cur = null;
+          for (var i = 0; i < segments.length; i++) {
+            var seg = segments[i];
+            var key = speakerKey(seg.speaker);
+            if (!cur || cur.key !== key) {
+              cur = { key: key, label: seg.speaker, segs: [] };
+              turns.push(cur);
+            }
+            cur.segs.push(seg);
+          }
+          return turns;
+        }
+
+        // Group by the FROZEN original-turn id (seg._turn) assigned in renderResults,
+        // NOT by current speaker. This preserves the on-screen turn STRUCTURE across
+        // per-turn reassignments: a turn whose speaker now matches a neighbour keeps its
+        // own block instead of merging. Each turn's label = the current speaker of its
+        // segments (so a reassignment updates the block's label/color/name). Falls back
+        // to consecutive-speaker grouping if segments were never tagged.
+        function groupByFrozenTurn(segments) {
+          var hasFrozen = segments.length === 0 || segments[0]._turn != null;
+          if (!hasFrozen) return groupSegments(segments);
+          var turns = [];
+          var cur = null;
+          for (var i = 0; i < segments.length; i++) {
+            var seg = segments[i];
+            if (!cur || cur.turnId !== seg._turn) {
+              cur = { turnId: seg._turn, key: speakerKey(seg.speaker), label: seg.speaker, segs: [] };
+              turns.push(cur);
+            }
+            cur.segs.push(seg);
+          }
+          return turns;
+        }
+
+        function colorForKey(key, registry) {
+          if (!(key in registry)) {
+            registry[key] = SPEAKER_COLORS[Object.keys(registry).length % SPEAKER_COLORS.length];
+          }
+          return registry[key];
+        }
+
+        // latest rendered transcript, read by the Markdown export at click time so
+        // the .md reflects the current data + the renamed speaker names (speakerNames).
+        var lastResult = null;     // { language, num_speakers, turns: [{label, segs}] }
+
+        // mutable WORKING COPY of the segments — the single source of truth for
+        // rendering after results arrive. Per-turn reassignment (feature 2) mutates
+        // seg.speaker on these objects in place, then re-runs buildTranscript().
+        // Rebuilt fresh at the start of every renderResults() so no reassignment
+        // leaks across transcription runs.
+        var workingSegments = [];
+        // language / num_speakers of the current run, kept for buildTranscript() +
+        // the Markdown export (which is rebuilt from workingSegments on every render).
+        var workingMeta = { language: null, num_speakers: null };
+
+        // next unused SPEAKER_NN label (zero-padded) not already present among the
+        // working segments, so speakerName/speakerKey/displayName/colorForKey all
+        // keep working when the user adds a brand-new speaker.
+        function nextFreeSpeakerLabel() {
+          var max = -1;
+          for (var i = 0; i < workingSegments.length; i++) {
+            var m = /^SPEAKER[_\s-]?(\d+)$/i.exec(String(workingSegments[i].speaker));
+            if (m) { var n = parseInt(m[1], 10); if (n > max) max = n; }
+          }
+          var next = max + 1;
+          return "SPEAKER_" + (next < 10 ? "0" + next : String(next));
+        }
+
+        // map: speakerKey -> array of DOM nodes whose text is the speaker's display name.
+        // Lets a legend edit update every turn's name + avatar live, in place.
+        var speakerNodes = {};
+
+        function registerNameNode(key, node, kind) {
+          if (!speakerNodes[key]) speakerNodes[key] = [];
+          speakerNodes[key].push({ node: node, kind: kind });
+        }
+
+        // apply the current displayName(label) for a key to all its registered nodes
+        function refreshSpeakerName(key, label) {
+          var name = displayName(label);
+          var nodes = speakerNodes[key] || [];
+          nodes.forEach(function (entry) {
+            if (entry.kind === "avatar") {
+              entry.node.textContent = avatarInitial(name);
+              entry.node.title = name;
+            } else {
+              entry.node.textContent = name;
+            }
+          });
+        }
+
+        function renderLegend(distinct, registry) {
+          el.speakerLegendGrid.innerHTML = "";
+          if (!distinct.length) { show(el.speakerLegend, false); return; }
+
+          distinct.forEach(function (sp) {
+            var color = registry[sp.key];
+
+            var row = document.createElement("div");
+            row.className = "lg-row";
+
+            var swatch = document.createElement("span");
+            swatch.className = "lg-swatch";
+            swatch.style.background = color;
+            swatch.setAttribute("aria-hidden", "true");
+
+            var field = document.createElement("div");
+            field.className = "lg-field";
+
+            var defName = speakerName(sp.label);
+            var inputId = "spk-name-" + sp.key;
+
+            var lab = document.createElement("label");
+            lab.className = "lg-lab";
+            lab.setAttribute("for", inputId);
+            lab.textContent = "שם הדובר/ת";
+
+            var input = document.createElement("input");
+            input.type = "text";
+            input.id = inputId;
+            input.setAttribute("data-speaker-key", sp.key);
+            input.setAttribute("aria-label", "עריכת השם של " + defName);
+            input.placeholder = defName;
+            input.maxLength = 60;
+            // show any already-set custom name (defensive; reset happens at run start)
+            input.value = (speakerNames[sp.key] != null) ? speakerNames[sp.key] : "";
+
+            input.addEventListener("input", function () {
+              var key = input.getAttribute("data-speaker-key");
+              var v = input.value.trim();
+              if (v === "") { delete speakerNames[key]; }
+              else { speakerNames[key] = v; }
+              refreshSpeakerName(key, sp.label);
+            });
+
+            field.appendChild(lab);
+            field.appendChild(input);
+
+            var pen = document.createElement("span");
+            pen.className = "lg-edit";
+            pen.setAttribute("aria-hidden", "true");
+            pen.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+
+            row.appendChild(swatch);
+            row.appendChild(field);
+            row.appendChild(pen);
+            el.speakerLegendGrid.appendChild(row);
+          });
+
+          show(el.speakerLegend, true);
+        }
+
+        function renderResults(data) {
+          stopElapsed();
+          clearStates();
+
+          // reset shared rename state + node registry so names never leak across runs
+          speakerNames = {};
+          speakerNodes = {};
+          lastResult = null;
+          el.downloadMdBtn.disabled = true;
+          el.downloadMdBtn.classList.remove("show");
+
+          var segments = Array.isArray(data.segments) ? data.segments : [];
+
+          // build the mutable WORKING COPY from the fresh response (shallow clone of
+          // each segment object) so per-turn reassignment mutates a private copy and
+          // nothing leaks across transcription runs.
+          workingSegments = segments.map(function (s) {
+            return { speaker: s.speaker, text: s.text, start: s.start, end: s.end };
+          });
+          // FREEZE turn boundaries: tag each working segment with a stable original-turn
+          // id from the INITIAL consecutive-speaker grouping. buildTranscript() groups by
+          // this frozen id (not by current speaker), so a later per-turn reassignment
+          // changes only that block's label/color/name and NEVER merges blocks together.
+          // _turn is client-side-only: it is never read by buildMarkdown and never sent to
+          // /transcribe; rebuilt fresh every run (the clone above drops any prior _turn).
+          (function freezeTurns() {
+            var turnId = -1;
+            var prevKey = null;
+            for (var i = 0; i < workingSegments.length; i++) {
+              var k = speakerKey(workingSegments[i].speaker);
+              if (i === 0 || k !== prevKey) { turnId += 1; prevKey = k; }
+              workingSegments[i]._turn = turnId;
+            }
+          })();
+          workingMeta = { language: data.language, num_speakers: data.num_speakers };
+
+          el.statLang.textContent =
+            (data.language == null || data.language === "") ? "—" : data.language;
+          el.statSpeakers.textContent =
+            (data.num_speakers == null) ? "—" : String(data.num_speakers);
+          el.statSegments.textContent = String(workingSegments.length);
+
+          buildTranscript();
+
+          show(el.results, true);
+          el.results.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        // (re)build the transcript DOM + legend + lastResult.turns from the WORKING
+        // COPY. Safe to re-run after a reassignment without re-fetching. Resets the
+        // per-render node registry (speakerNodes) but NEVER speakerNames, so custom
+        // names survive a reassignment and the global rename stays in effect.
+        function buildTranscript() {
+          speakerNodes = {};
+          el.transcript.innerHTML = "";
+          el.speakerLegendGrid.innerHTML = "";
+          show(el.speakerLegend, false);
+
+          if (workingSegments.length === 0) {
+            var note = document.createElement("p");
+            note.className = "empty-note";
+            note.textContent = "לא זוהה דיבור בקובץ.";
+            el.transcript.appendChild(note);
+            lastResult = { language: workingMeta.language, num_speakers: workingMeta.num_speakers, turns: [] };
+            el.downloadMdBtn.disabled = false;
+            el.downloadMdBtn.classList.add("show");
+            return;
+          }
+
+          // group by FROZEN turn id so reassignment never merges adjacent blocks
+          var turns = groupByFrozenTurn(workingSegments);
+          var registry = {};
+          var distinct = [];           // distinct speakers in first-seen order, for the legend
+          var seenKeys = {};
+
+          // full distinct-speaker set across ALL segments (first-seen order) — drives
+          // the reassignment <select> options so every current speaker is offered,
+          // not only those visible in the turn order.
+          var distinctLabels = [];
+          var seenLabelKeys = {};
+          workingSegments.forEach(function (seg) {
+            var k = speakerKey(seg.speaker);
+            if (!seenLabelKeys[k]) {
+              seenLabelKeys[k] = true;
+              distinctLabels.push({ key: k, label: seg.speaker });
+            }
+          });
+
+          turns.forEach(function (turn, ti) {
+            var color = colorForKey(turn.key, registry);
+
+            if (!seenKeys[turn.key]) {
+              seenKeys[turn.key] = true;
+              distinct.push({ key: turn.key, label: turn.label });
+            }
+
+            var wrap = document.createElement("div");
+            wrap.className = "turn";
+            wrap.style.animationDelay = Math.min(ti * 0.04, 0.5) + "s";
+
+            // rail (avatar + thread)
+            var rail = document.createElement("div");
+            rail.className = "rail";
+            var avatar = document.createElement("div");
+            avatar.className = "avatar";
+            avatar.style.background = color;
+            var name = displayName(turn.label);
+            // initial for avatar: first meaningful char of Hebrew label or speaker number
+            avatar.textContent = avatarInitial(name);
+            avatar.title = name;
+            registerNameNode(turn.key, avatar, "avatar");
+            var thread = document.createElement("div");
+            thread.className = "thread";
+            rail.appendChild(avatar);
+            rail.appendChild(thread);
+
+            // bubble
+            var bubble = document.createElement("div");
+            bubble.className = "bubble";
+            bubble.style.borderInlineStartColor = color;
+
+            var first = turn.segs[0];
+            var last = turn.segs[turn.segs.length - 1];
+
+            var meta = document.createElement("div");
+            meta.className = "meta";
+            var who = document.createElement("span");
+            who.className = "who";
+            who.style.color = color;
+            who.textContent = name;
+            registerNameNode(turn.key, who, "who");
+            var time = document.createElement("span");
+            time.className = "time";
+            time.textContent = fmtTime(first.start) + " – " + fmtTime(last.end);
+            meta.appendChild(who);
+            meta.appendChild(time);
+
+            // per-turn REASSIGNMENT control (feature 2)
+            meta.appendChild(buildReassignControl(ti, turn, distinctLabels));
+
+            bubble.appendChild(meta);
+
+            turn.segs.forEach(function (seg) {
+              var line = document.createElement("p");
+              line.className = "line";
+              line.setAttribute("dir", "rtl");
+              line.innerHTML = escapeText(seg.text) ||
+                "<span style='color:var(--paper-faint)'>[ללא טקסט]</span>";
+              bubble.appendChild(line);
+            });
+
+            wrap.appendChild(rail);
+            wrap.appendChild(bubble);
+            el.transcript.appendChild(wrap);
+          });
+
+          renderLegend(distinct, registry);
+
+          // store the rebuilt transcript for the Markdown export (read at click time)
+          // — rebuilt from workingSegments so corrections + renames are reflected.
+          lastResult = { language: workingMeta.language, num_speakers: workingMeta.num_speakers, turns: turns };
+          el.downloadMdBtn.disabled = false;
+          el.downloadMdBtn.classList.add("show");
+        }
+
+        // build the Hebrew <select> that REASSIGNS a turn to a different / new speaker.
+        // ti = turn index (valid for the current render); turn = the turn object;
+        // distinctLabels = [{key,label}] of every current speaker. On change it mutates
+        // seg.speaker for every segment in the turn (refs into workingSegments) then
+        // re-renders via buildTranscript() so color / name update (turn blocks stay frozen).
+        function buildReassignControl(ti, turn, distinctLabels) {
+          var ctl = document.createElement("span");
+          ctl.className = "reassign";
+
+          var selId = "reassign-" + ti;
+          var lab = document.createElement("label");
+          lab.className = "ra-lab";
+          lab.setAttribute("for", selId);
+          lab.textContent = "שיוך";
+
+          var sel = document.createElement("select");
+          sel.id = selId;
+          sel.setAttribute("data-turn-idx", String(ti));
+          sel.setAttribute("aria-label", "שיוך הקטע לדובר/ת");
+          sel.title = "שיוך הקטע לדובר/ת אחר/ת";
+
+          var curKey = speakerKey(turn.label);
+          distinctLabels.forEach(function (sp) {
+            var opt = document.createElement("option");
+            opt.value = sp.label == null ? "" : String(sp.label);
+            opt.textContent = displayName(sp.label);
+            if (sp.key === curKey) opt.selected = true;
+            sel.appendChild(opt);
+          });
+
+          var newOpt = document.createElement("option");
+          newOpt.value = "__new__";
+          newOpt.textContent = "דובר/ת חדש/ה";
+          sel.appendChild(newOpt);
+
+          sel.addEventListener("change", function () {
+            var idx = parseInt(sel.getAttribute("data-turn-idx"), 10);
+            var t = (lastResult && lastResult.turns) ? lastResult.turns[idx] : null;
+            if (!t) return;
+            var chosen = sel.value;
+            var newLabel = (chosen === "__new__") ? nextFreeSpeakerLabel() : chosen;
+            // mutate the working copy in place (segs are references into workingSegments)
+            t.segs.forEach(function (seg) { seg.speaker = newLabel; });
+            buildTranscript(); // re-render colors/names; frozen turn blocks never merge
+          });
+
+          ctl.appendChild(lab);
+          ctl.appendChild(sel);
+          return ctl;
+        }
+
+        // ---------- Markdown export (client-side only) ----------
+        function buildMarkdown(result) {
+          var lines = [];
+          lines.push("# תמלול");
+          lines.push("");
+          var lang = (result.language == null || result.language === "") ? "—" : String(result.language);
+          var nspk = (result.num_speakers == null) ? "—" : String(result.num_speakers);
+          lines.push("- שפה: " + lang);
+          lines.push("- מספר דוברים: " + nspk);
+          lines.push("");
+
+          var turns = result.turns || [];
+          if (!turns.length) {
+            lines.push("_לא זוהה דיבור בקובץ._");
+            lines.push("");
+            return lines.join("\n");
+          }
+
+          turns.forEach(function (turn) {
+            var first = turn.segs[0];
+            var last = turn.segs[turn.segs.length - 1];
+            var range = fmtTime(first.start) + "–" + fmtTime(last.end);
+            // displayName() reads the current speakerNames at click time → renames reflected
+            lines.push("## " + displayName(turn.label) + " (" + range + ")");
+            turn.segs.forEach(function (seg) {
+              var text = (seg.text == null ? "" : String(seg.text)).trim();
+              lines.push(text === "" ? "[ללא טקסט]" : text);
+            });
+            lines.push("");
+          });
+
+          return lines.join("\n");
+        }
+
+        function downloadMarkdown() {
+          if (!lastResult) {
+            showError("אין תמלול", "יש להפיק תמלול לפני ההורדה.");
+            return;
+          }
+          var md = buildMarkdown(lastResult);
+          var blob = new Blob([md], { type: "text/markdown" });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement("a");
+          a.href = url;
+          a.download = "transcript.md";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+        }
+
+        // ---------- submit ----------
+        function submit() {
+          if (busy) return;
+          if (!selectedFile) {
+            showError("לא נבחר קובץ", "בחרו או גררו קובץ שמע לפני התחלת התמלול.");
+            return;
+          }
+          if (selectedFile.size === 0) {
+            showError("הקובץ ריק", "הקובץ שנבחר אינו מכיל נתונים.");
+            return;
+          }
+          if (selectedFile.size > MAX_UPLOAD_BYTES) {
+            showError("הקובץ גדול מדי", "המגבלה היא 25 מ״ב.");
+            return;
+          }
+
+          busy = true;
+          el.submitBtn.disabled = true;
+          clearStates();
+          show(el.loading, true);
+          startElapsed();
+          el.loading.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+          var fd = new FormData();
+          fd.append("file", selectedFile, selectedFile.name);
+
+          fetch("/transcribe", { method: "POST", body: fd })
+            .then(function (resp) {
+              return resp.text().then(function (raw) {
+                var body = null;
+                try { body = raw ? JSON.parse(raw) : null; } catch (e) { body = null; }
+                if (!resp.ok) {
+                  var detail = (body && typeof body.detail === "string") ? body.detail : null;
+                  var err = new Error(detail || "");
+                  err.handled = true;
+                  err.status = resp.status;
+                  err.detail = detail;
+                  throw err;
+                }
+                if (!body || typeof body !== "object") {
+                  throw new Error("__bad_json__");
+                }
+                return body;
+              });
+            })
+            .then(function (data) {
+              renderResults(data);
+            })
+            .catch(function (err) {
+              stopElapsed();
+              if (err && err.handled) {
+                showError(
+                  "התמלול נכשל" + (err.status ? " (" + err.status + ")" : ""),
+                  err.detail || "השרת החזיר שגיאה. נסו שוב או בחרו קובץ אחר."
+                );
+              } else if (err && err.message === "__bad_json__") {
+                showError("תגובה לא תקינה", "השרת החזיר תשובה שלא ניתן לפענח.");
+              } else {
+                showError(
+                  "החיבור לשרת נכשל",
+                  "לא הצלחנו ליצור קשר עם שירות התמלול. ודאו שהשרת פעיל ונסו שוב."
+                );
+              }
+            })
+            .then(function () {
+              busy = false;
+              el.submitBtn.disabled = !selectedFile;
+            });
+        }
+
+        // ---------- wire up events ----------
+        el.dropzone.addEventListener("click", function () { el.fileInput.click(); });
+        el.dropzone.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.fileInput.click(); }
+        });
+
+        el.fileInput.addEventListener("change", function () {
+          setFile(el.fileInput.files && el.fileInput.files[0]);
+        });
+
+        ["dragenter", "dragover"].forEach(function (ev) {
+          el.dropzone.addEventListener(ev, function (e) {
+            e.preventDefault(); e.stopPropagation();
+            el.dropzone.classList.add("drag");
+          });
+        });
+        ["dragleave", "dragend", "drop"].forEach(function (ev) {
+          el.dropzone.addEventListener(ev, function (e) {
+            e.preventDefault(); e.stopPropagation();
+            el.dropzone.classList.remove("drag");
+          });
+        });
+        el.dropzone.addEventListener("drop", function (e) {
+          var dt = e.dataTransfer;
+          if (dt && dt.files && dt.files.length) setFile(dt.files[0]);
+        });
+
+        // prevent the browser from opening dropped files outside the zone
+        ["dragover", "drop"].forEach(function (ev) {
+          window.addEventListener(ev, function (e) {
+            if (!el.dropzone.contains(e.target)) e.preventDefault();
+          });
+        });
+
+        el.clearBtn.addEventListener("click", function (e) {
+          e.stopPropagation();
+          clearFile();
+          show(el.alert, false);
+        });
+
+        el.submitBtn.addEventListener("click", submit);
+        el.downloadMdBtn.addEventListener("click", downloadMarkdown);
+
+        // record panel wiring
+        el.recordBtn.addEventListener("click", startRecording);
+        el.stopBtn.addEventListener("click", stopRecording);
+        el.recUse.addEventListener("click", useRecording);
+        el.recSave.addEventListener("click", saveRecording);
+
+        if (!recSupported) {
+          el.recordBtn.disabled = true;
+          el.stopBtn.disabled = true;
+          el.recordBtn.title = "הדפדפן אינו תומך בהקלטה";
+          setRecStatus("הקלטה אינה נתמכת בדפדפן זה", false);
+        }
+
+        // free the mic / object URLs if the page is closed mid-recording
+        window.addEventListener("beforeunload", function () {
+          freeStream();
+          revokeRecUrl();
+          revokeUploadUrl();
+        });
+      })();
+    </script>
+  </body>
+</html>

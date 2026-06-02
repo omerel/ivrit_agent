@@ -19,7 +19,10 @@ def test_defaults_match_main_py(monkeypatch):
     ]:
         monkeypatch.delenv(var, raising=False)
     cfg = _fresh_config()
-    s = cfg.Settings()
+    # Disable .env-file loading so this asserts the CODE defaults only,
+    # independent of any local .env that overrides values (e.g. WHISPER_MODEL
+    # pointing at a local model snapshot).
+    s = cfg.Settings(_env_file=None)
     assert s.WHISPER_MODEL == "ivrit-ai/whisper-large-v3-turbo-ct2"
     assert s.DEVICE == "cpu"
     assert s.COMPUTE_TYPE == "int8"

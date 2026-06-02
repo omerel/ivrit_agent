@@ -49,6 +49,7 @@ log line, the service is ready.
 
 | Method | Path          | Description                                            |
 |--------|---------------|--------------------------------------------------------|
+| `GET`  | `/`           | Browser upload page (see [Web UI](#web-ui)).           |
 | `POST` | `/transcribe` | Transcribe + diarize an uploaded audio file.           |
 | `GET`  | `/health`     | Liveness probe. Returns `{"status": "ok"}`.            |
 
@@ -91,6 +92,81 @@ Response schema:
 | `segments[].end`     | float       | Segment end time, in seconds.                                         |
 | `language`     | string or null    | Detected/configured language code (e.g. `he`).                        |
 | `num_speakers` | integer or null   | Number of distinct speaker labels found (excluding `"UNKNOWN"`); `null` if none could be determined. |
+
+## Web UI
+
+The service also serves a browser-based upload page so you can transcribe audio
+without writing any client code.
+
+Start the server (see [Run](#run)):
+
+```bash
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Then open the page in a browser at `GET /`:
+
+```
+http://localhost:8000/
+```
+
+What it does:
+
+- **Fully offline.** The page is a single self-contained `app/static/index.html`
+  with all CSS and JS inlined — no CDNs, no Google Fonts, no remote assets, no
+  libraries. It works with no internet connection (it only talks to this
+  same-origin service). The clean, professional RTL Hebrew theme is plain inline
+  CSS using the system font stack.
+- **Upload an audio file** via file picker or drag-and-drop. Uploads are capped
+  at **25 MiB** (`MAX_UPLOAD_BYTES`); larger files are rejected client-side with
+  a Hebrew error before they are sent.
+- **Listen to the uploaded file in the page.** As soon as you select (or drag in)
+  a file — or feed in a recording — an inline audio player appears so you can play
+  the audio back **before and after** transcribing. Playback is fully client-side:
+  the player is fed a local object URL (`URL.createObjectURL`) of the selected
+  file, so nothing is uploaded just to listen and it works with no network. The
+  object URL is released when you pick a different file, clear the selection, or
+  leave the page. This is separate from the recorder's own preview player, so an
+  uploaded file and a recorded clip never clobber each other.
+- **Record from your microphone** as an alternative to uploading a file. Use the
+  in-page recorder to start/stop a recording, preview it with the built-in audio
+  player, optionally **save (keep) the recording** to your computer as a local
+  download, and **use the recording for transcription**. A used recording is fed
+  into the *same* `POST /transcribe` flow as an uploaded file, so it is subject
+  to the identical **25 MiB** limit and contract. Recording uses only the
+  browser's built-in `getUserMedia` / `MediaRecorder` Web APIs — no libraries and
+  no network. If the browser lacks microphone support or permission is denied,
+  the recorder shows a Hebrew message and file upload still works.
+- **RTL Hebrew results.** On success the transcript renders right-to-left, with
+  segments grouped and labelled by speaker and per-segment timestamps shown as
+  `mm:ss`. A header summary shows the detected `language` and the
+  `num_speakers` count.
+- **Rename a speaker (change a display name).** After a transcript renders, a
+  small editable per-speaker legend lets you give each distinct speaker a custom
+  name. A rename changes that speaker's **display name everywhere** — it applies
+  **live** across the whole transcript and the legend, and resets when you
+  transcribe a new recording. This does *not* move any turn from one speaker to
+  another; it only relabels.
+- **Reassign a turn (fix a wrong attribution).** Diarization sometimes credits a
+  turn to the wrong person. To correct that, each turn has its own control that
+  lets you **move that turn to a different speaker** — or to a brand-new speaker.
+  This is distinct from renaming: renaming changes a speaker's *name*, whereas
+  reassigning changes *which speaker a turn belongs to*. After a reassignment the
+  transcript re-renders live (avatar, color, and name all update) while the
+  **turn structure is preserved** — each turn stays its own block, so reassigning
+  never merges turns together or unites their text. Any
+  custom name you already gave a speaker still applies after a reassignment, since
+  both features key off the same speaker identity. Reassignment is entirely
+  client-side (it edits a working copy of the segments in the browser; no server
+  round-trip) and resets when you transcribe a new recording.
+- **Download as Markdown.** Export the transcript as a `.md` file with one click.
+  The Markdown is generated entirely client-side (a `Blob` download — no server
+  round-trip, no libraries) and reflects both your **renamed speaker names** and
+  any **turn reassignments** at the time you click.
+
+Under the hood the page POSTs the audio (uploaded or recorded) to the
+same-origin `POST /transcribe` endpoint described above, so it respects the exact
+same contract and limits.
 
 ## How to send audio
 
