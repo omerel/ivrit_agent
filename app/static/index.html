@@ -331,6 +331,31 @@
         display: flex; gap: 10px; flex-wrap: wrap; margin-top: 13px;
       }
 
+      /* uploaded-file inline player — lives inside the filebar so it appears
+         whenever a file is selected (picker / drag-drop / used recording) and
+         stays visible alongside results. Mirrors the .rec-preview vocabulary
+         (dashed separator, mono uppercase pv-label, saturate-toned <audio>) so
+         the uploaded file and the recorded clip read as the same family. */
+      .upload-preview {
+        display: none;
+        flex: 1 1 100%;
+        margin-top: 4px;
+        padding-top: 14px;
+        border-top: 1px dashed var(--line-soft);
+        animation: fade .3s ease both;
+      }
+      .upload-preview.show { display: block; }
+      .upload-preview .pv-label {
+        font-family: var(--mono); font-size: .66rem; letter-spacing: .16em;
+        text-transform: uppercase; color: var(--paper-faint);
+        margin: 0 0 9px;
+      }
+      .upload-preview audio {
+        width: 100%; height: 38px; display: block;
+        border-radius: var(--radius-sm);
+        filter: saturate(.85);
+      }
+
       /* selected file row */
       .filebar {
         display: none;
@@ -770,6 +795,13 @@
               <path d="M6 6l12 12M18 6L6 18"/>
             </svg>
           </button>
+
+          <!-- inline player for the UPLOADED file (feature 1) — client-side
+               object URL only, fully offline, distinct from #recPreview -->
+          <div class="upload-preview" id="uploadPreview">
+            <p class="pv-label">האזנה לקובץ שהועלה</p>
+            <audio id="uploadPreviewAudio" controls preload="metadata" aria-label="האזנה לקובץ השמע שהועלה"></audio>
+          </div>
         </div>
 
         <div class="actions">
@@ -871,6 +903,8 @@
           filebar:    document.getElementById("filebar"),
           fileName:   document.getElementById("fileName"),
           fileSize:   document.getElementById("fileSize"),
+          uploadPreview:      document.getElementById("uploadPreview"),
+          uploadPreviewAudio: document.getElementById("uploadPreviewAudio"),
           clearBtn:   document.getElementById("clearBtn"),
           submitBtn:  document.getElementById("submitBtn"),
           alert:      document.getElementById("alert"),
@@ -975,6 +1009,14 @@
         }
 
         // ---------- file selection ----------
+        // object URL backing the inline player for the UPLOADED file. Created on
+        // accept, revoked when a new file is selected / cleared / on beforeunload.
+        var uploadUrl = null;
+
+        function revokeUploadUrl() {
+          if (uploadUrl) { URL.revokeObjectURL(uploadUrl); uploadUrl = null; }
+        }
+
         function setFile(file) {
           show(el.alert, false);
           if (!file) { clearFile(); return; }
@@ -998,6 +1040,13 @@
           el.fileSize.textContent = fmtBytes(file.size);
           el.filebar.classList.add("show");
           el.submitBtn.disabled = false;
+
+          // inline playback of the uploaded file (feature 1): revoke the previous
+          // URL first so repeated selections never leak, then load the new one.
+          revokeUploadUrl();
+          uploadUrl = URL.createObjectURL(file);
+          el.uploadPreviewAudio.src = uploadUrl;
+          el.uploadPreview.classList.add("show");
         }
 
         function clearFile() {
@@ -1005,6 +1054,10 @@
           el.fileInput.value = "";
           el.filebar.classList.remove("show");
           el.submitBtn.disabled = true;
+
+          revokeUploadUrl();
+          el.uploadPreviewAudio.removeAttribute("src");
+          el.uploadPreview.classList.remove("show");
         }
 
         // ---------- in-browser recording (getUserMedia + MediaRecorder) ----------
@@ -1611,6 +1664,7 @@
         window.addEventListener("beforeunload", function () {
           freeStream();
           revokeRecUrl();
+          revokeUploadUrl();
         });
       })();
     </script>
