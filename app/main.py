@@ -14,7 +14,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, UploadFile
 
-from app.config import settings
+from app.config import REPO_ROOT, settings
 from app.schemas import Segment, TranscriptionResponse
 from app.transcription import TranscriptionPipeline
 
@@ -22,8 +22,25 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ivrit_agent")
 
 
+def _resolve_local_model(model_ref: str) -> str:
+    """Resolve a local whisper model directory.
+
+    A relative ``WHISPER_MODEL`` that points at an existing directory is
+    resolved against ``REPO_ROOT`` (not the process CWD) so the model loads
+    from disk regardless of where uvicorn is launched. Anything that is not a
+    local directory (e.g. a Hugging Face repo id) is returned unchanged.
+    """
+    candidate = Path(model_ref)
+    if not candidate.is_absolute():
+        candidate = REPO_ROOT / model_ref
+    if candidate.is_dir():
+        return str(candidate.resolve())
+    return model_ref
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    settings.WHISPER_MODEL = _resolve_local_model(settings.WHISPER_MODEL)
     logger.info(
         "Loading models (whisper=%s, device=%s)...",
         settings.WHISPER_MODEL,
