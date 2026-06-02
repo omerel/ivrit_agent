@@ -487,6 +487,32 @@
       }
       .stat .v { font-family: var(--serif); font-weight: 600; font-size: 1.3rem; color: var(--accent-2); }
 
+      /* download-Markdown button — sits in the results header, uses the
+         established secondary-button vocabulary (panel surface, hairline,
+         teal focus) so it complements rather than competes with the primary CTA */
+      .summary .res-title { display: flex; align-items: center; gap: 10px; }
+      .res-title .rt-spacer { flex: 1 1 auto; }
+      .btn-md {
+        display: none;
+        flex: 0 0 auto;
+        font-family: var(--sans);
+        font-size: .82rem; font-weight: 600;
+        letter-spacing: .005em;
+        border-radius: var(--radius-sm);
+        padding: 8px 14px;
+        cursor: pointer;
+        align-items: center; gap: 8px;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        color: var(--paper);
+        transition: transform .15s ease, border-color .2s, background .2s, color .2s, opacity .2s;
+      }
+      .btn-md.show { display: inline-flex; }
+      .btn-md svg { width: 15px; height: 15px; color: var(--accent-2); }
+      .btn-md:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); color: var(--paper); }
+      .btn-md:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+      .btn-md:disabled { opacity: .4; cursor: not-allowed; }
+
       /* ---------- Speaker legend (editable per-speaker names) ---------- */
       .legend {
         display: none;
@@ -788,6 +814,14 @@
               <path d="M20 6 9 17l-5-5"/>
             </svg>
             התמלול מוכן
+            <span class="rt-spacer" aria-hidden="true"></span>
+            <button type="button" class="btn-md" id="downloadMdBtn" aria-label="הורדת התמלול כקובץ Markdown" title="הורדת התמלול כקובץ Markdown" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 4v12M12 16l-4-4M12 16l4-4"/>
+                <path d="M4 20h16"/>
+              </svg>
+              הורדה כ־Markdown
+            </button>
           </h2>
           <div class="stat"><span class="k">שפה</span><span class="v" id="statLang">—</span></div>
           <div class="stat"><span class="k">מספר דוברים</span><span class="v" id="statSpeakers">—</span></div>
@@ -851,6 +885,7 @@
           transcript: document.getElementById("transcript"),
           speakerLegend: document.getElementById("speakerLegend"),
           speakerLegendGrid: document.getElementById("speakerLegendGrid"),
+          downloadMdBtn: document.getElementById("downloadMdBtn"),
           recordBtn:    document.getElementById("recordBtn"),
           stopBtn:      document.getElementById("stopBtn"),
           recStatus:    document.getElementById("recStatus"),
@@ -1192,6 +1227,10 @@
           return registry[key];
         }
 
+        // latest rendered transcript, read by the Markdown export at click time so
+        // the .md reflects the current data + the renamed speaker names (speakerNames).
+        var lastResult = null;     // { language, num_speakers, turns: [{label, segs}] }
+
         // map: speakerKey -> array of DOM nodes whose text is the speaker's display name.
         // Lets a legend edit update every turn's name + avatar live, in place.
         var speakerNodes = {};
@@ -1283,6 +1322,9 @@
           // reset shared rename state + node registry so names never leak across runs
           speakerNames = {};
           speakerNodes = {};
+          lastResult = null;
+          el.downloadMdBtn.disabled = true;
+          el.downloadMdBtn.classList.remove("show");
 
           var segments = Array.isArray(data.segments) ? data.segments : [];
 
@@ -1301,6 +1343,9 @@
             note.className = "empty-note";
             note.textContent = "לא זוהה דיבור בקובץ.";
             el.transcript.appendChild(note);
+            lastResult = { language: data.language, num_speakers: data.num_speakers, turns: [] };
+            el.downloadMdBtn.disabled = false;
+            el.downloadMdBtn.classList.add("show");
             show(el.results, true);
             return;
           }
@@ -1376,8 +1421,64 @@
 
           renderLegend(distinct, registry);
 
+          // store the rendered transcript for the Markdown export (read at click time)
+          lastResult = { language: data.language, num_speakers: data.num_speakers, turns: turns };
+          el.downloadMdBtn.disabled = false;
+          el.downloadMdBtn.classList.add("show");
+
           show(el.results, true);
           el.results.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        // ---------- Markdown export (client-side only) ----------
+        function buildMarkdown(result) {
+          var lines = [];
+          lines.push("# תמלול");
+          lines.push("");
+          var lang = (result.language == null || result.language === "") ? "—" : String(result.language);
+          var nspk = (result.num_speakers == null) ? "—" : String(result.num_speakers);
+          lines.push("- שפה: " + lang);
+          lines.push("- מספר דוברים: " + nspk);
+          lines.push("");
+
+          var turns = result.turns || [];
+          if (!turns.length) {
+            lines.push("_לא זוהה דיבור בקובץ._");
+            lines.push("");
+            return lines.join("\n");
+          }
+
+          turns.forEach(function (turn) {
+            var first = turn.segs[0];
+            var last = turn.segs[turn.segs.length - 1];
+            var range = fmtTime(first.start) + "–" + fmtTime(last.end);
+            // displayName() reads the current speakerNames at click time → renames reflected
+            lines.push("## " + displayName(turn.label) + " (" + range + ")");
+            turn.segs.forEach(function (seg) {
+              var text = (seg.text == null ? "" : String(seg.text)).trim();
+              lines.push(text === "" ? "[ללא טקסט]" : text);
+            });
+            lines.push("");
+          });
+
+          return lines.join("\n");
+        }
+
+        function downloadMarkdown() {
+          if (!lastResult) {
+            showError("אין תמלול", "יש להפיק תמלול לפני ההורדה.");
+            return;
+          }
+          var md = buildMarkdown(lastResult);
+          var blob = new Blob([md], { type: "text/markdown" });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement("a");
+          a.href = url;
+          a.download = "transcript.md";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.setTimeout(function () { URL.revokeObjectURL(url); }, 0);
         }
 
         // ---------- submit ----------
@@ -1491,6 +1592,7 @@
         });
 
         el.submitBtn.addEventListener("click", submit);
+        el.downloadMdBtn.addEventListener("click", downloadMarkdown);
 
         // record panel wiring
         el.recordBtn.addEventListener("click", startRecording);
