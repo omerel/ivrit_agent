@@ -120,6 +120,14 @@ What it does:
 - **Upload an audio file** via file picker or drag-and-drop. Uploads are capped
   at **25 MiB** (`MAX_UPLOAD_BYTES`); larger files are rejected client-side with
   a Hebrew error before they are sent.
+- **Listen to the uploaded file in the page.** As soon as you select (or drag in)
+  a file — or feed in a recording — an inline audio player appears so you can play
+  the audio back **before and after** transcribing. Playback is fully client-side:
+  the player is fed a local object URL (`URL.createObjectURL`) of the selected
+  file, so nothing is uploaded just to listen and it works with no network. The
+  object URL is released when you pick a different file, clear the selection, or
+  leave the page. This is separate from the recorder's own preview player, so an
+  uploaded file and a recorded clip never clobber each other.
 - **Record from your microphone** as an alternative to uploading a file. Use the
   in-page recorder to start/stop a recording, preview it with the built-in audio
   player, optionally **save (keep) the recording** to your computer as a local
@@ -133,14 +141,27 @@ What it does:
   segments grouped and labelled by speaker and per-segment timestamps shown as
   `mm:ss`. A header summary shows the detected `language` and the
   `num_speakers` count.
-- **Rename speakers.** After a transcript renders, a small editable per-speaker
-  legend lets you give each distinct speaker a custom name. Renames apply **live**
-  across the whole transcript (and the legend) and reset when you transcribe a
-  new recording.
+- **Rename a speaker (change a display name).** After a transcript renders, a
+  small editable per-speaker legend lets you give each distinct speaker a custom
+  name. A rename changes that speaker's **display name everywhere** — it applies
+  **live** across the whole transcript and the legend, and resets when you
+  transcribe a new recording. This does *not* move any turn from one speaker to
+  another; it only relabels.
+- **Reassign a turn (fix a wrong attribution).** Diarization sometimes credits a
+  turn to the wrong person. To correct that, each turn has its own control that
+  lets you **move that turn to a different speaker** — or to a brand-new speaker.
+  This is distinct from renaming: renaming changes a speaker's *name*, whereas
+  reassigning changes *which speaker a turn belongs to*. After a reassignment the
+  transcript re-renders live (avatar, color, name, and grouping all update), and
+  adjacent turns that end up with the same speaker **merge** automatically. Any
+  custom name you already gave a speaker still applies after a reassignment, since
+  both features key off the same speaker identity. Reassignment is entirely
+  client-side (it edits a working copy of the segments in the browser; no server
+  round-trip) and resets when you transcribe a new recording.
 - **Download as Markdown.** Export the transcript as a `.md` file with one click.
   The Markdown is generated entirely client-side (a `Blob` download — no server
-  round-trip, no libraries) and reflects any renamed speaker names at the time
-  you click.
+  round-trip, no libraries) and reflects both your **renamed speaker names** and
+  any **turn reassignments** at the time you click.
 
 Under the hood the page POSTs the audio (uploaded or recorded) to the
 same-origin `POST /transcribe` endpoint described above, so it respects the exact
