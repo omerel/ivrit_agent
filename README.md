@@ -49,6 +49,7 @@ log line, the service is ready.
 
 | Method | Path          | Description                                            |
 |--------|---------------|--------------------------------------------------------|
+| `GET`  | `/`           | Browser upload page (see [Web UI](#web-ui)).           |
 | `POST` | `/transcribe` | Transcribe + diarize an uploaded audio file.           |
 | `GET`  | `/health`     | Liveness probe. Returns `{"status": "ok"}`.            |
 
@@ -91,6 +92,39 @@ Response schema:
 | `segments[].end`     | float       | Segment end time, in seconds.                                         |
 | `language`     | string or null    | Detected/configured language code (e.g. `he`).                        |
 | `num_speakers` | integer or null   | Number of distinct speaker labels found (excluding `"UNKNOWN"`); `null` if none could be determined. |
+
+## Web UI
+
+The service also serves a browser-based upload page so you can transcribe audio
+without writing any client code.
+
+Start the server (see [Run](#run)):
+
+```bash
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Then open the page in a browser at `GET /`:
+
+```
+http://localhost:8000/
+```
+
+What it does:
+
+- **Fully offline.** The page is a single self-contained `app/static/index.html`
+  with all CSS and JS inlined — no CDNs, no Google Fonts, no remote assets. It
+  works with no internet connection (it only talks to this same-origin service).
+- **Upload an audio file** via file picker or drag-and-drop. Uploads are capped
+  at **25 MiB** (`MAX_UPLOAD_BYTES`); larger files are rejected client-side with
+  a Hebrew error before they are sent.
+- **RTL Hebrew results.** On success the transcript renders right-to-left, with
+  segments grouped and labelled by speaker and per-segment timestamps shown as
+  `mm:ss`. A header summary shows the detected `language` and the
+  `num_speakers` count.
+
+Under the hood the page POSTs the file to the same-origin `POST /transcribe`
+endpoint described above, so it respects the exact same contract and limits.
 
 ## How to send audio
 
