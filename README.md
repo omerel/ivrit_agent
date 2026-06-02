@@ -113,18 +113,38 @@ http://localhost:8000/
 What it does:
 
 - **Fully offline.** The page is a single self-contained `app/static/index.html`
-  with all CSS and JS inlined — no CDNs, no Google Fonts, no remote assets. It
-  works with no internet connection (it only talks to this same-origin service).
+  with all CSS and JS inlined — no CDNs, no Google Fonts, no remote assets, no
+  libraries. It works with no internet connection (it only talks to this
+  same-origin service). The clean, professional RTL Hebrew theme is plain inline
+  CSS using the system font stack.
 - **Upload an audio file** via file picker or drag-and-drop. Uploads are capped
   at **25 MiB** (`MAX_UPLOAD_BYTES`); larger files are rejected client-side with
   a Hebrew error before they are sent.
+- **Record from your microphone** as an alternative to uploading a file. Use the
+  in-page recorder to start/stop a recording, preview it with the built-in audio
+  player, optionally **save (keep) the recording** to your computer as a local
+  download, and **use the recording for transcription**. A used recording is fed
+  into the *same* `POST /transcribe` flow as an uploaded file, so it is subject
+  to the identical **25 MiB** limit and contract. Recording uses only the
+  browser's built-in `getUserMedia` / `MediaRecorder` Web APIs — no libraries and
+  no network. If the browser lacks microphone support or permission is denied,
+  the recorder shows a Hebrew message and file upload still works.
 - **RTL Hebrew results.** On success the transcript renders right-to-left, with
   segments grouped and labelled by speaker and per-segment timestamps shown as
   `mm:ss`. A header summary shows the detected `language` and the
   `num_speakers` count.
+- **Rename speakers.** After a transcript renders, a small editable per-speaker
+  legend lets you give each distinct speaker a custom name. Renames apply **live**
+  across the whole transcript (and the legend) and reset when you transcribe a
+  new recording.
+- **Download as Markdown.** Export the transcript as a `.md` file with one click.
+  The Markdown is generated entirely client-side (a `Blob` download — no server
+  round-trip, no libraries) and reflects any renamed speaker names at the time
+  you click.
 
-Under the hood the page POSTs the file to the same-origin `POST /transcribe`
-endpoint described above, so it respects the exact same contract and limits.
+Under the hood the page POSTs the audio (uploaded or recorded) to the
+same-origin `POST /transcribe` endpoint described above, so it respects the exact
+same contract and limits.
 
 ## How to send audio
 
