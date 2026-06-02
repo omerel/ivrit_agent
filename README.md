@@ -152,8 +152,9 @@ What it does:
   lets you **move that turn to a different speaker** — or to a brand-new speaker.
   This is distinct from renaming: renaming changes a speaker's *name*, whereas
   reassigning changes *which speaker a turn belongs to*. After a reassignment the
-  transcript re-renders live (avatar, color, name, and grouping all update), and
-  adjacent turns that end up with the same speaker **merge** automatically. Any
+  transcript re-renders live (avatar, color, and name all update) while the
+  **turn structure is preserved** — each turn stays its own block, so reassigning
+  never merges turns together or unites their text. Any
   custom name you already gave a speaker still applies after a reassignment, since
   both features key off the same speaker identity. Reassignment is entirely
   client-side (it edits a working copy of the segments in the browser; no server

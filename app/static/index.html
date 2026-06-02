@@ -1616,7 +1616,7 @@
         // ti = turn index (valid for the current render); turn = the turn object;
         // distinctLabels = [{key,label}] of every current speaker. On change it mutates
         // seg.speaker for every segment in the turn (refs into workingSegments) then
-        // re-renders via buildTranscript() so grouping / color / name / merge update.
+        // re-renders via buildTranscript() so color / name update (turn blocks stay frozen).
         function buildReassignControl(ti, turn, distinctLabels) {
           var ctl = document.createElement("span");
           ctl.className = "reassign";
@@ -1655,7 +1655,7 @@
             var newLabel = (chosen === "__new__") ? nextFreeSpeakerLabel() : chosen;
             // mutate the working copy in place (segs are references into workingSegments)
             t.segs.forEach(function (seg) { seg.speaker = newLabel; });
-            buildTranscript(); // re-group + re-render so merges / colors / names update
+            buildTranscript(); // re-render colors/names; frozen turn blocks never merge
           });
 
           ctl.appendChild(lab);
