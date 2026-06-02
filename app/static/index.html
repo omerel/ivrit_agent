@@ -487,6 +487,79 @@
       }
       .stat .v { font-family: var(--serif); font-weight: 600; font-size: 1.3rem; color: var(--accent-2); }
 
+      /* ---------- Speaker legend (editable per-speaker names) ---------- */
+      .legend {
+        display: none;
+        margin-top: 22px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background:
+          linear-gradient(180deg, rgba(255,255,255,.012), transparent 36%),
+          var(--ink-2);
+        overflow: hidden;
+        animation: rise .5s ease both;
+      }
+      .legend.show { display: block; }
+      .legend-head {
+        display: flex; align-items: center; gap: 11px;
+        padding: 13px clamp(15px, 3vw, 20px);
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .legend-head .lg-kick {
+        font-family: var(--mono);
+        font-size: .66rem; letter-spacing: .2em; text-transform: uppercase;
+        color: var(--paper-faint); font-weight: 500;
+      }
+      .legend-head .lg-ic { flex: 0 0 auto; color: var(--accent-2); width: 16px; height: 16px; display: grid; place-items: center; }
+      .legend-head .lg-ic svg { width: 16px; height: 16px; }
+      .legend-head .rule { flex: 1 1 auto; height: 1px; background: var(--line-soft); }
+
+      .legend-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+        gap: 10px;
+        padding: 14px clamp(15px, 3vw, 20px) 16px;
+      }
+      .lg-row {
+        display: flex; align-items: center; gap: 11px;
+        padding: 9px 12px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        transition: border-color .2s ease;
+      }
+      .lg-row:focus-within { border-color: var(--paper-faint); }
+      .lg-swatch {
+        flex: 0 0 auto;
+        width: 18px; height: 18px; border-radius: 6px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.3);
+      }
+      .lg-field { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+      .lg-field .lg-lab {
+        font-family: var(--mono);
+        font-size: .58rem; letter-spacing: .14em; text-transform: uppercase;
+        color: var(--paper-faint);
+      }
+      .lg-field input {
+        font-family: var(--sans);
+        font-size: .95rem; font-weight: 700;
+        color: var(--paper);
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid transparent;
+        padding: 1px 0 2px;
+        width: 100%;
+        transition: border-color .2s ease;
+      }
+      .lg-field input::placeholder { color: var(--paper-faint); font-weight: 600; }
+      .lg-field input:hover { border-bottom-color: var(--line); }
+      .lg-field input:focus {
+        outline: none;
+        border-bottom-color: var(--accent);
+      }
+      .lg-edit { flex: 0 0 auto; color: var(--paper-faint); width: 14px; height: 14px; opacity: .6; }
+      .lg-edit svg { width: 14px; height: 14px; display: block; }
+
       .transcript { margin-top: 26px; display: flex; flex-direction: column; gap: 18px; }
 
       .turn {
@@ -720,6 +793,22 @@
           <div class="stat"><span class="k">מספר דוברים</span><span class="v" id="statSpeakers">—</span></div>
           <div class="stat"><span class="k">מקטעים</span><span class="v" id="statSegments">—</span></div>
         </div>
+
+        <!-- editable per-speaker legend -->
+        <div id="speakerLegend" class="legend" aria-label="שמות הדוברים — ניתן לעריכה">
+          <div class="legend-head">
+            <span class="lg-ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/>
+                <path d="M16 6.2a3 3 0 0 1 0 5.6M18.5 19a5 5 0 0 0-3.2-4.7"/>
+              </svg>
+            </span>
+            <span class="lg-kick">שמות הדוברים · לחצו כדי לערוך</span>
+            <span class="rule" aria-hidden="true"></span>
+          </div>
+          <div class="legend-grid" id="speakerLegendGrid"></div>
+        </div>
+
         <div class="transcript" id="transcript"></div>
       </div>
 
@@ -760,6 +849,8 @@
           statSpeakers: document.getElementById("statSpeakers"),
           statSegments: document.getElementById("statSegments"),
           transcript: document.getElementById("transcript"),
+          speakerLegend: document.getElementById("speakerLegend"),
+          speakerLegendGrid: document.getElementById("speakerLegendGrid"),
           recordBtn:    document.getElementById("recordBtn"),
           stopBtn:      document.getElementById("stopBtn"),
           recStatus:    document.getElementById("recStatus"),
@@ -807,6 +898,23 @@
 
         function speakerKey(label) {
           return (label == null || label === "") ? "__none__" : String(label);
+        }
+
+        // ---------- shared speaker-name state (read by legend render + MD export) ----------
+        // speakerNames[ speakerKey(label) ] = customName (string). Reset per run in renderResults.
+        var speakerNames = {};
+
+        // Single display-name lookup used EVERYWHERE a speaker name is shown:
+        // custom name if set & non-empty, else the Hebrew default.
+        function displayName(label) {
+          var key = speakerKey(label);
+          var custom = speakerNames[key];
+          return (custom != null && custom !== "") ? custom : speakerName(label);
+        }
+
+        // initial char shown in the avatar for a given display name
+        function avatarInitial(name) {
+          return name.replace(/[^0-9]/g, "") || name.charAt(0) || "?";
         }
 
         function escapeText(t) {
@@ -1084,9 +1192,97 @@
           return registry[key];
         }
 
+        // map: speakerKey -> array of DOM nodes whose text is the speaker's display name.
+        // Lets a legend edit update every turn's name + avatar live, in place.
+        var speakerNodes = {};
+
+        function registerNameNode(key, node, kind) {
+          if (!speakerNodes[key]) speakerNodes[key] = [];
+          speakerNodes[key].push({ node: node, kind: kind });
+        }
+
+        // apply the current displayName(label) for a key to all its registered nodes
+        function refreshSpeakerName(key, label) {
+          var name = displayName(label);
+          var nodes = speakerNodes[key] || [];
+          nodes.forEach(function (entry) {
+            if (entry.kind === "avatar") {
+              entry.node.textContent = avatarInitial(name);
+              entry.node.title = name;
+            } else {
+              entry.node.textContent = name;
+            }
+          });
+        }
+
+        function renderLegend(distinct, registry) {
+          el.speakerLegendGrid.innerHTML = "";
+          if (!distinct.length) { show(el.speakerLegend, false); return; }
+
+          distinct.forEach(function (sp) {
+            var color = registry[sp.key];
+
+            var row = document.createElement("div");
+            row.className = "lg-row";
+
+            var swatch = document.createElement("span");
+            swatch.className = "lg-swatch";
+            swatch.style.background = color;
+            swatch.setAttribute("aria-hidden", "true");
+
+            var field = document.createElement("div");
+            field.className = "lg-field";
+
+            var defName = speakerName(sp.label);
+            var inputId = "spk-name-" + sp.key;
+
+            var lab = document.createElement("label");
+            lab.className = "lg-lab";
+            lab.setAttribute("for", inputId);
+            lab.textContent = "שם הדובר/ת";
+
+            var input = document.createElement("input");
+            input.type = "text";
+            input.id = inputId;
+            input.setAttribute("data-speaker-key", sp.key);
+            input.setAttribute("aria-label", "עריכת השם של " + defName);
+            input.placeholder = defName;
+            input.maxLength = 60;
+            // show any already-set custom name (defensive; reset happens at run start)
+            input.value = (speakerNames[sp.key] != null) ? speakerNames[sp.key] : "";
+
+            input.addEventListener("input", function () {
+              var key = input.getAttribute("data-speaker-key");
+              var v = input.value.trim();
+              if (v === "") { delete speakerNames[key]; }
+              else { speakerNames[key] = v; }
+              refreshSpeakerName(key, sp.label);
+            });
+
+            field.appendChild(lab);
+            field.appendChild(input);
+
+            var pen = document.createElement("span");
+            pen.className = "lg-edit";
+            pen.setAttribute("aria-hidden", "true");
+            pen.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+
+            row.appendChild(swatch);
+            row.appendChild(field);
+            row.appendChild(pen);
+            el.speakerLegendGrid.appendChild(row);
+          });
+
+          show(el.speakerLegend, true);
+        }
+
         function renderResults(data) {
           stopElapsed();
           clearStates();
+
+          // reset shared rename state + node registry so names never leak across runs
+          speakerNames = {};
+          speakerNodes = {};
 
           var segments = Array.isArray(data.segments) ? data.segments : [];
 
@@ -1097,6 +1293,8 @@
           el.statSegments.textContent = String(segments.length);
 
           el.transcript.innerHTML = "";
+          el.speakerLegendGrid.innerHTML = "";
+          show(el.speakerLegend, false);
 
           if (segments.length === 0) {
             var note = document.createElement("p");
@@ -1109,9 +1307,16 @@
 
           var turns = groupSegments(segments);
           var registry = {};
+          var distinct = [];           // distinct speakers in first-seen order, for the legend
+          var seenKeys = {};
 
           turns.forEach(function (turn, ti) {
             var color = colorForKey(turn.key, registry);
+
+            if (!seenKeys[turn.key]) {
+              seenKeys[turn.key] = true;
+              distinct.push({ key: turn.key, label: turn.label });
+            }
 
             var wrap = document.createElement("div");
             wrap.className = "turn";
@@ -1123,10 +1328,11 @@
             var avatar = document.createElement("div");
             avatar.className = "avatar";
             avatar.style.background = color;
-            var name = speakerName(turn.label);
+            var name = displayName(turn.label);
             // initial for avatar: first meaningful char of Hebrew label or speaker number
-            avatar.textContent = name.replace(/[^0-9]/g, "") || name.charAt(0);
+            avatar.textContent = avatarInitial(name);
             avatar.title = name;
+            registerNameNode(turn.key, avatar, "avatar");
             var thread = document.createElement("div");
             thread.className = "thread";
             rail.appendChild(avatar);
@@ -1146,6 +1352,7 @@
             who.className = "who";
             who.style.color = color;
             who.textContent = name;
+            registerNameNode(turn.key, who, "who");
             var time = document.createElement("span");
             time.className = "time";
             time.textContent = fmtTime(first.start) + " – " + fmtTime(last.end);
@@ -1166,6 +1373,8 @@
             wrap.appendChild(bubble);
             el.transcript.appendChild(wrap);
           });
+
+          renderLegend(distinct, registry);
 
           show(el.results, true);
           el.results.scrollIntoView({ behavior: "smooth", block: "start" });
