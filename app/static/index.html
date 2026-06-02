@@ -1307,6 +1307,28 @@
           return turns;
         }
 
+        // Group by the FROZEN original-turn id (seg._turn) assigned in renderResults,
+        // NOT by current speaker. This preserves the on-screen turn STRUCTURE across
+        // per-turn reassignments: a turn whose speaker now matches a neighbour keeps its
+        // own block instead of merging. Each turn's label = the current speaker of its
+        // segments (so a reassignment updates the block's label/color/name). Falls back
+        // to consecutive-speaker grouping if segments were never tagged.
+        function groupByFrozenTurn(segments) {
+          var hasFrozen = segments.length === 0 || segments[0]._turn != null;
+          if (!hasFrozen) return groupSegments(segments);
+          var turns = [];
+          var cur = null;
+          for (var i = 0; i < segments.length; i++) {
+            var seg = segments[i];
+            if (!cur || cur.turnId !== seg._turn) {
+              cur = { turnId: seg._turn, key: speakerKey(seg.speaker), label: seg.speaker, segs: [] };
+              turns.push(cur);
+            }
+            cur.segs.push(seg);
+          }
+          return turns;
+        }
+
         function colorForKey(key, registry) {
           if (!(key in registry)) {
             registry[key] = SPEAKER_COLORS[Object.keys(registry).length % SPEAKER_COLORS.length];
@@ -1444,6 +1466,21 @@
           workingSegments = segments.map(function (s) {
             return { speaker: s.speaker, text: s.text, start: s.start, end: s.end };
           });
+          // FREEZE turn boundaries: tag each working segment with a stable original-turn
+          // id from the INITIAL consecutive-speaker grouping. buildTranscript() groups by
+          // this frozen id (not by current speaker), so a later per-turn reassignment
+          // changes only that block's label/color/name and NEVER merges blocks together.
+          // _turn is client-side-only: it is never read by buildMarkdown and never sent to
+          // /transcribe; rebuilt fresh every run (the clone above drops any prior _turn).
+          (function freezeTurns() {
+            var turnId = -1;
+            var prevKey = null;
+            for (var i = 0; i < workingSegments.length; i++) {
+              var k = speakerKey(workingSegments[i].speaker);
+              if (i === 0 || k !== prevKey) { turnId += 1; prevKey = k; }
+              workingSegments[i]._turn = turnId;
+            }
+          })();
           workingMeta = { language: data.language, num_speakers: data.num_speakers };
 
           el.statLang.textContent =
@@ -1479,7 +1516,8 @@
             return;
           }
 
-          var turns = groupSegments(workingSegments);
+          // group by FROZEN turn id so reassignment never merges adjacent blocks
+          var turns = groupByFrozenTurn(workingSegments);
           var registry = {};
           var distinct = [];           // distinct speakers in first-seen order, for the legend
           var seenKeys = {};
