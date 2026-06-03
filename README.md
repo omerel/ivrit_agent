@@ -21,6 +21,17 @@ no network model fetch at request time.
 
 ## Install
 
+First install the `ffmpeg` system binary (whisperx shells out to it to decode
+audio). The service refuses to start without it:
+
+```bash
+sudo apt-get install -y ffmpeg       # Debian/Ubuntu
+brew install ffmpeg                  # macOS
+conda install -c conda-forge ffmpeg  # no root / conda env
+```
+
+Then sync Python dependencies:
+
 ```bash
 uv sync
 ```

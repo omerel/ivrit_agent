@@ -8,6 +8,7 @@ returns the diarized transcription as JSON.
 """
 import logging
 import os
+import shutil
 import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -40,8 +41,25 @@ def _resolve_local_model(model_ref: str) -> str:
     return model_ref
 
 
+def _require_ffmpeg() -> None:
+    """Fail fast at startup if the ``ffmpeg`` binary is not on the PATH.
+
+    whisperx shells out to ``ffmpeg`` to decode audio (``whisperx.load_audio``),
+    so a missing binary otherwise surfaces as a cryptic ``FileNotFoundError`` on
+    the first ``/transcribe`` request. Checking here turns that into an obvious
+    startup failure with install instructions.
+    """
+    if shutil.which("ffmpeg") is None:
+        raise RuntimeError(
+            "ffmpeg not found on PATH. whisperx needs it to decode audio. "
+            "Install it, e.g. `sudo apt-get install -y ffmpeg` (Debian/Ubuntu), "
+            "`brew install ffmpeg` (macOS), or `conda install -c conda-forge ffmpeg`."
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _require_ffmpeg()
     settings.WHISPER_MODEL = _resolve_local_model(settings.WHISPER_MODEL)
     logger.info(
         "Loading models (whisper=%s, device=%s)...",

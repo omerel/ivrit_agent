@@ -91,6 +91,20 @@ def test_transcribe_deletes_temp_file(monkeypatch):
         assert not os.path.exists(p), f"temp file leaked: {p}"
 
 
+def test_require_ffmpeg_passes_when_present(monkeypatch):
+    monkeypatch.setattr(main.shutil, "which", lambda name: "/usr/bin/ffmpeg")
+    main._require_ffmpeg()  # must not raise
+
+
+def test_require_ffmpeg_raises_when_missing(monkeypatch):
+    monkeypatch.setattr(main.shutil, "which", lambda name: None)
+    with pytest.raises(RuntimeError) as exc:
+        main._require_ffmpeg()
+    # Error must name the missing binary and how to install it.
+    assert "ffmpeg" in str(exc.value)
+    assert "install" in str(exc.value).lower()
+
+
 def test_import_does_not_load_models():
     # Importing app.main must not have constructed a real pipeline on app.state.
     import importlib
