@@ -292,6 +292,51 @@
       .btn-rec.is-stop { border-color: var(--line); }
       .btn-rec.is-stop .sq { width: 9px; height: 9px; border-radius: 2px; background: var(--bad); }
 
+      /* "include computer audio" toggle — a quiet utility that sits in the
+         .rec-controls row. Mirrors the mono-uppercase label vocabulary
+         (.rec-kick) and the teal accent so it reads as part of the recorder
+         family. The native checkbox is accent-colored; the whole control is a
+         <label> so the text is a click/focus target, and the input stays
+         keyboard-focusable. */
+      .rec-toggle {
+        display: inline-flex; align-items: center; gap: 8px;
+        font-family: var(--mono);
+        font-size: .68rem; letter-spacing: .14em; text-transform: uppercase;
+        color: var(--paper-faint); font-weight: 500;
+        cursor: pointer;
+        user-select: none;
+        margin-inline-start: 2px;
+        transition: color .2s ease, opacity .2s ease;
+      }
+      .rec-toggle:hover:not(.is-disabled) { color: var(--paper-dim); }
+      .rec-toggle.is-disabled { opacity: .4; cursor: not-allowed; }
+      .rec-toggle input {
+        appearance: none; -webkit-appearance: none;
+        flex: 0 0 auto;
+        width: 16px; height: 16px; margin: 0;
+        border-radius: 5px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        cursor: inherit;
+        position: relative;
+        transition: border-color .2s ease, background .2s ease;
+      }
+      .rec-toggle:hover:not(.is-disabled) input { border-color: var(--paper-faint); }
+      .rec-toggle input:checked {
+        background: linear-gradient(135deg, var(--accent-2), var(--accent));
+        border-color: var(--accent);
+      }
+      .rec-toggle input:checked::after {
+        content: "";
+        position: absolute;
+        left: 4px; top: 1px;
+        width: 4px; height: 8px;
+        border: solid var(--accent-ink);
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+      }
+      .rec-toggle input:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+
       .rec-status {
         display: inline-flex; align-items: center; gap: 9px;
         font-family: var(--mono); font-size: .8rem;
@@ -791,6 +836,10 @@
               <span class="pulse" aria-hidden="true"></span>
               <span id="recStatusText">מוכן להקלטה</span>
             </span>
+            <label class="rec-toggle" id="incCompAudioLabel" for="incCompAudio">
+              <input type="checkbox" id="incCompAudio" aria-label="כלול שמע מהמחשב" />
+              כלול שמע מהמחשב
+            </label>
           </div>
 
           <div class="rec-preview" id="recPreviewWrap">
@@ -961,7 +1010,9 @@
           recPreviewWrap: document.getElementById("recPreviewWrap"),
           recPreview:   document.getElementById("recPreview"),
           recUse:       document.getElementById("recUse"),
-          recSave:      document.getElementById("recSave")
+          recSave:      document.getElementById("recSave"),
+          incCompAudio:      document.getElementById("incCompAudio"),
+          incCompAudioLabel: document.getElementById("incCompAudioLabel")
         };
 
         var selectedFile = null;
@@ -1099,7 +1150,9 @@
                               navigator.mediaDevices.getUserMedia &&
                               window.MediaRecorder);
         var mediaRecorder = null;
-        var recStream = null;
+        var recStream = null;        // mic stream (getUserMedia)
+        var recDisplayStream = null; // display/tab stream (getDisplayMedia), when "include computer audio" is on
+        var recAudioCtx = null;      // Web Audio context used to mix mic + tab audio
         var recChunks = [];
         var recBlob = null;
         var recBlobUrl = null;     // object URL for the <audio> preview
@@ -1123,9 +1176,22 @@
         }
 
         function freeStream() {
+          // Release every acquired capture stream: the mic, and (when "include
+          // computer audio" was on) the display/tab stream — including its video
+          // track, which is captured only to surface Chrome's "share tab audio"
+          // checkbox and must never be recorded. Also tear down the mixing
+          // AudioContext so no audio graph is left running.
           if (recStream) {
             recStream.getTracks().forEach(function (t) { t.stop(); });
             recStream = null;
+          }
+          if (recDisplayStream) {
+            recDisplayStream.getTracks().forEach(function (t) { t.stop(); });
+            recDisplayStream = null;
+          }
+          if (recAudioCtx) {
+            try { recAudioCtx.close(); } catch (e) { /* already closed */ }
+            recAudioCtx = null;
           }
         }
 
@@ -1151,6 +1217,64 @@
           return "webm";
         }
 
+        // Build the MediaRecorder around a final audio stream and start it.
+        // `recordStream` is whatever should be recorded: the raw mic stream
+        // (mic-only path) or the mixed-destination stream (mic + tab audio).
+        // This is the unchanged recorder-construction logic, factored out so
+        // both paths share it; pickRecMime()/onRecStop() behavior is identical.
+        function beginRecorder(recordStream) {
+          recChunks = [];
+          recBlob = null;
+
+          var chosen = pickRecMime();
+          var opts = chosen ? { mimeType: chosen } : undefined;
+          try {
+            mediaRecorder = opts ? new MediaRecorder(recordStream, opts) : new MediaRecorder(recordStream);
+          } catch (e) {
+            mediaRecorder = new MediaRecorder(recordStream);
+          }
+          recMime = mediaRecorder.mimeType || chosen || "audio/webm";
+
+          mediaRecorder.addEventListener("dataavailable", function (e) {
+            if (e.data && e.data.size > 0) recChunks.push(e.data);
+          });
+          mediaRecorder.addEventListener("stop", onRecStop);
+
+          mediaRecorder.start();
+          el.recordBtn.disabled = true;
+          el.stopBtn.disabled = false;
+          el.recPreviewWrap.classList.remove("show");
+          startRecTimer();
+        }
+
+        // Map a getUserMedia/getDisplayMedia rejection to a Hebrew showError and
+        // reset the controls to the ready state. Used by both capture steps.
+        function handleRecError(err) {
+          freeStream();
+          el.recordBtn.disabled = false;
+          el.stopBtn.disabled = true;
+          setRecStatus("מוכן להקלטה", false);
+          var denied = err && (err.name === "NotAllowedError" ||
+                               err.name === "SecurityError" ||
+                               err.name === "PermissionDeniedError");
+          if (denied) {
+            showError(
+              "ההרשאה למיקרופון נדחתה",
+              "כדי להקליט יש לאשר גישה למיקרופון בדפדפן. לחלופין ניתן להעלות קובץ שמע."
+            );
+          } else if (err && err.name === "NotFoundError") {
+            showError(
+              "לא נמצא מיקרופון",
+              "לא אותר התקן הקלטה במחשב. חברו מיקרופון או העלו קובץ שמע."
+            );
+          } else {
+            showError(
+              "ההקלטה נכשלה",
+              "לא ניתן היה להתחיל בהקלטה. נסו שוב או העלו קובץ שמע."
+            );
+          }
+        }
+
         function startRecording() {
           if (!recSupported) {
             showError(
@@ -1161,57 +1285,88 @@
           }
           if (mediaRecorder && mediaRecorder.state === "recording") return;
 
+          var includeComputer = !!(el.incCompAudio && el.incCompAudio.checked);
+
           show(el.alert, false);
+          // Mic first in BOTH paths, so a denied mic never leaves a dangling
+          // display capture. When "include computer audio" is off, this resolves
+          // exactly as before and records the mic stream directly.
           navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(function (stream) {
-              recStream = stream;
-              recChunks = [];
-              recBlob = null;
-
-              var chosen = pickRecMime();
-              var opts = chosen ? { mimeType: chosen } : undefined;
-              try {
-                mediaRecorder = opts ? new MediaRecorder(stream, opts) : new MediaRecorder(stream);
-              } catch (e) {
-                mediaRecorder = new MediaRecorder(stream);
+            .then(function (micStream) {
+              recStream = micStream;
+              if (includeComputer) {
+                addComputerAudioAndRecord(micStream);
+              } else {
+                beginRecorder(micStream);
               }
-              recMime = mediaRecorder.mimeType || chosen || "audio/webm";
+            })
+            .catch(handleRecError);
+        }
 
-              mediaRecorder.addEventListener("dataavailable", function (e) {
-                if (e.data && e.data.size > 0) recChunks.push(e.data);
+        // "Include computer audio" path: the mic is already acquired. Now request
+        // the tab/display stream (video:true only to surface Chrome's "share tab
+        // audio" checkbox), mix mic + tab audio via the Web Audio API into one
+        // destination stream, and record THAT. The display video track is stopped
+        // immediately and never mixed/recorded.
+        function addComputerAudioAndRecord(micStream) {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+            // No tab-audio capability — release the mic and reset to ready.
+            freeStream();
+            el.recordBtn.disabled = false;
+            el.stopBtn.disabled = true;
+            setRecStatus("מוכן להקלטה", false);
+            showError(
+              "שיתוף שמע אינו נתמך",
+              "הדפדפן הזה אינו תומך בלכידת שמע מהמחשב. בטלו את האפשרות והקליטו מהמיקרופון, או העלו קובץ שמע."
+            );
+            return;
+          }
+
+          navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+            .then(function (displayStream) {
+              recDisplayStream = displayStream;
+
+              // The video track exists only to expose the "share tab audio"
+              // option; stop and remove it so it is never recorded.
+              displayStream.getVideoTracks().forEach(function (t) {
+                t.stop();
+                displayStream.removeTrack(t);
               });
-              mediaRecorder.addEventListener("stop", onRecStop);
 
-              mediaRecorder.start();
-              el.recordBtn.disabled = true;
-              el.stopBtn.disabled = false;
-              el.recPreviewWrap.classList.remove("show");
-              startRecTimer();
+              var displayAudio = displayStream.getAudioTracks();
+              if (!displayAudio.length) {
+                // User shared a tab but did NOT tick "share audio" (guide
+                // decision 2026-06-03): fall back to mic-only and proceed.
+                // Discard the orphaned display stream and record the mic alone.
+                if (recDisplayStream) {
+                  recDisplayStream.getTracks().forEach(function (t) { t.stop(); });
+                  recDisplayStream = null;
+                }
+                beginRecorder(micStream);
+                return;
+              }
+
+              // Mix: one source node per stream -> a single destination node.
+              var Ctx = window.AudioContext || window.webkitAudioContext;
+              recAudioCtx = new Ctx();
+              var dest = recAudioCtx.createMediaStreamDestination();
+              recAudioCtx.createMediaStreamSource(micStream).connect(dest);
+              recAudioCtx.createMediaStreamSource(displayStream).connect(dest);
+
+              beginRecorder(dest.stream);
             })
             .catch(function (err) {
+              // User cancelled the share prompt (NotAllowedError/AbortError) or
+              // it otherwise failed: stop the already-acquired mic, reset, and
+              // show a Hebrew error. No uncaught rejection.
               freeStream();
               el.recordBtn.disabled = false;
               el.stopBtn.disabled = true;
               setRecStatus("מוכן להקלטה", false);
-              var denied = err && (err.name === "NotAllowedError" ||
-                                   err.name === "SecurityError" ||
-                                   err.name === "PermissionDeniedError");
-              if (denied) {
-                showError(
-                  "ההרשאה למיקרופון נדחתה",
-                  "כדי להקליט יש לאשר גישה למיקרופון בדפדפן. לחלופין ניתן להעלות קובץ שמע."
-                );
-              } else if (err && err.name === "NotFoundError") {
-                showError(
-                  "לא נמצא מיקרופון",
-                  "לא אותר התקן הקלטה במחשב. חברו מיקרופון או העלו קובץ שמע."
-                );
-              } else {
-                showError(
-                  "ההקלטה נכשלה",
-                  "לא ניתן היה להתחיל בהקלטה. נסו שוב או העלו קובץ שמע."
-                );
-              }
+              showError(
+                "שיתוף השמע בוטל",
+                "כדי לכלול שמע מהמחשב יש לבחור לשונית ולאשר שיתוף שמע. בטלו את האפשרות כדי להקליט מהמיקרופון בלבד."
+              );
             });
         }
 
@@ -1838,6 +1993,13 @@
           el.stopBtn.disabled = true;
           el.recordBtn.title = "הדפדפן אינו תומך בהקלטה";
           setRecStatus("הקלטה אינה נתמכת בדפדפן זה", false);
+          if (el.incCompAudio) {
+            el.incCompAudio.disabled = true;
+            el.incCompAudio.checked = false;
+          }
+          if (el.incCompAudioLabel) {
+            el.incCompAudioLabel.classList.add("is-disabled");
+          }
         }
 
         // free the mic / object URLs if the page is closed mid-recording
