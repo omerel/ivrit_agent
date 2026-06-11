@@ -15,9 +15,15 @@ class FakePipeline:
         self._result = result if result is not None else ([], None, None)
         self._raises = raises
         self.seen_paths = []
+        self.seen_kwargs = []
 
-    def transcribe(self, audio_path, min_speakers=2):
+    def transcribe(self, audio_path, min_speakers=None, max_speakers=None,
+                   num_speakers=None):
         self.seen_paths.append(audio_path)
+        self.seen_kwargs.append(
+            {"min_speakers": min_speakers, "max_speakers": max_speakers,
+             "num_speakers": num_speakers}
+        )
         if self._raises:
             raise self._raises
         return self._result
@@ -51,6 +57,19 @@ def test_transcribe_success_returns_segments():
     assert body["segments"][0] == {
         "speaker": "SPEAKER_00", "text": "שלום", "start": 0.0, "end": 1.2,
     }
+
+
+def test_transcribe_threads_speaker_count_hints():
+    pipe = FakePipeline(result=([], "he", 4))
+    client = make_client(pipe)
+    resp = client.post(
+        "/transcribe",
+        files={"file": ("a.m4a", b"abc", "audio/m4a")},
+        data={"num_speakers": "4", "min_speakers": "2"},
+    )
+    assert resp.status_code == 200
+    assert pipe.seen_kwargs[-1]["num_speakers"] == 4
+    assert pipe.seen_kwargs[-1]["min_speakers"] == 2
 
 
 def test_transcribe_empty_upload_400():

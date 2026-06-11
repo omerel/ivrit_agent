@@ -13,7 +13,7 @@ import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request, UploadFile
+from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -96,7 +96,13 @@ async def health():
 
 
 @app.post("/transcribe", response_model=TranscriptionResponse)
-async def transcribe(request: Request, file: UploadFile):
+async def transcribe(
+    request: Request,
+    file: UploadFile,
+    min_speakers: int | None = Form(None),
+    max_speakers: int | None = Form(None),
+    num_speakers: int | None = Form(None),
+):
     data = await file.read()
     if not data:
         raise HTTPException(status_code=400, detail="Empty upload.")
@@ -112,11 +118,16 @@ async def transcribe(request: Request, file: UploadFile):
         tmp.write(data)
         tmp.flush()
         tmp.close()  # close so ffmpeg can read it on all platforms
-        segments, language, num_speakers = request.app.state.pipeline.transcribe(tmp.name)
+        segments, language, detected_speakers = request.app.state.pipeline.transcribe(
+            tmp.name,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+            num_speakers=num_speakers,
+        )
         return TranscriptionResponse(
             segments=[Segment(**s) for s in segments],
             language=language,
-            num_speakers=num_speakers,
+            num_speakers=detected_speakers,
         )
     except HTTPException:
         raise

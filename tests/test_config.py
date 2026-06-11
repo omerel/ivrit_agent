@@ -29,6 +29,10 @@ def test_defaults_match_main_py(monkeypatch):
     assert s.LANGUAGE == "he"
     assert s.DIARIZATION_CONFIG == "models/pyannote-diarization/config.yaml"
     assert s.MIN_SPEAKERS == 2
+    # Exact/cap speaker hints default to "unset" so the diarizer decides unless
+    # told otherwise (per-request or via env).
+    assert s.NUM_SPEAKERS is None
+    assert s.MAX_SPEAKERS is None
     assert s.BATCH_SIZE == 4
     assert s.MAX_UPLOAD_BYTES == 26_214_400
     assert s.HOST == "0.0.0.0"
@@ -43,6 +47,13 @@ def test_env_override(monkeypatch):
     s = cfg.Settings()
     assert s.PORT == 9000
     assert s.DEVICE == "cuda"
+
+
+def test_num_speakers_env_override(monkeypatch):
+    monkeypatch.setenv("NUM_SPEAKERS", "3")
+    cfg = _fresh_config()
+    s = cfg.Settings(_env_file=None)
+    assert s.NUM_SPEAKERS == 3
 
 
 def test_hf_hub_offline_exported_at_import(monkeypatch):

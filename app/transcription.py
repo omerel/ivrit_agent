@@ -12,13 +12,46 @@ import logging
 
 import torch
 import whisperx
-from whisperx.diarize import DiarizationPipeline
+from whisperx.diarize import DiarizationPipeline, assign_word_speakers
 
 from app.config import Settings, settings as default_settings
 
 logger = logging.getLogger("ivrit_agent")
 
 DEFAULT_SPEAKER = "UNKNOWN"
+
+
+def _split_words_by_speaker(words: list[dict]) -> list[dict]:
+    """Group consecutive same-speaker words into ``{speaker, text, start, end}`` turns.
+
+    ``assign_word_speakers`` labels each *word* with a speaker, but a coarse whisper
+    segment can span several speakers. Splitting the word stream wherever the speaker
+    changes turns a single multi-speaker segment into one segment per speaker turn —
+    without this, only the dominant speaker of each whisper segment survives and a
+    multi-speaker recording collapses to one speaker.
+    """
+    turns: list[dict] = []
+    cur: dict | None = None
+    for w in words:
+        speaker = w.get("speaker") or DEFAULT_SPEAKER
+        text = w.get("word", "")
+        if cur is not None and cur["speaker"] == speaker:
+            cur["text"] += text
+            cur["end"] = w.get("end", cur["end"])
+        else:
+            if cur is not None:
+                cur["text"] = cur["text"].strip()
+                turns.append(cur)
+            cur = {
+                "speaker": speaker,
+                "text": text,
+                "start": w.get("start"),
+                "end": w.get("end", w.get("start")),
+            }
+    if cur is not None:
+        cur["text"] = cur["text"].strip()
+        turns.append(cur)
+    return turns
 
 
 def _allowlist_pyannote_globals() -> None:
@@ -105,35 +138,93 @@ class TranscriptionPipeline:
         )
         logger.info("Models loaded")
 
-    def transcribe(self, audio_path: str, min_speakers: int | None = None):
+    def transcribe(
+        self,
+        audio_path: str,
+        min_speakers: int | None = None,
+        max_speakers: int | None = None,
+        num_speakers: int | None = None,
+    ):
         """Transcribe + diarize ``audio_path``.
 
-        Returns ``(segments, language, num_speakers)`` where ``segments`` is a
-        list of ``{speaker, text, start, end}`` dicts.
+        ``min_speakers`` / ``max_speakers`` bound the diarization clustering and
+        ``num_speakers`` pins it exactly — pass these when the speaker count is
+        known, since similar-sounding voices can otherwise be merged into fewer
+        clusters than are really present. Returns ``(segments, language,
+        num_speakers)`` where ``segments`` is a list of
+        ``{speaker, text, start, end}`` dicts.
         """
         if self._model is None or self._diarize_pipeline is None:
             raise RuntimeError("Pipeline not loaded; call load() first.")
-        if min_speakers is None:
+        # Per-request args win; otherwise fall back to the configured hints. An
+        # exact NUM_SPEAKERS pins the count, so MIN_SPEAKERS only applies as a
+        # floor when no exact count is in play.
+        if num_speakers is None:
+            num_speakers = self.settings.NUM_SPEAKERS
+        if max_speakers is None:
+            max_speakers = self.settings.MAX_SPEAKERS
+        if min_speakers is None and num_speakers is None:
             min_speakers = self.settings.MIN_SPEAKERS
 
         audio = whisperx.load_audio(audio_path)
-        result = self._model.transcribe(
-            audio,
-            batch_size=self.settings.BATCH_SIZE,
-            language=self.settings.LANGUAGE,
-        )
-        diarize_segments = self._diarize_pipeline(audio, min_speakers=min_speakers)
-        final_result = whisperx.assign_word_speakers(diarize_segments, result)
 
-        segments = [
-            {
-                "speaker": seg.get("speaker", DEFAULT_SPEAKER),
-                "text": seg["text"],
-                "start": seg["start"],
-                "end": seg["end"],
-            }
-            for seg in final_result["segments"]
-        ]
+        # whisperx's batched transcribe forces ``without_timestamps=True``, so its
+        # segments carry NO word-level timing. ``assign_word_speakers`` then can only
+        # attach one dominant speaker per coarse segment, collapsing a multi-speaker
+        # recording to a single speaker. We instead drive the underlying
+        # faster-whisper model directly with ``word_timestamps=True`` so each word
+        # gets a timestamp the diarization can be matched against.
+        fw_segments, info = self._model.model.transcribe(
+            audio,
+            language=self.settings.LANGUAGE,
+            word_timestamps=True,
+        )
+        whisper_segments = []
+        for seg in fw_segments:
+            words = [
+                {
+                    "word": w.word,
+                    "start": w.start,
+                    "end": w.end,
+                    "score": w.probability,
+                }
+                for w in (seg.words or [])
+                if w.start is not None
+            ]
+            whisper_segments.append(
+                {"start": seg.start, "end": seg.end, "text": seg.text, "words": words}
+            )
+
+        result = {"segments": whisper_segments, "language": info.language}
+        diarize_segments = self._diarize_pipeline(
+            audio,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+            num_speakers=num_speakers,
+        )
+        # fill_nearest=True labels words that fall in diarization gaps with the
+        # nearest speaker instead of leaving them UNKNOWN.
+        final_result = assign_word_speakers(
+            diarize_segments, result, fill_nearest=True
+        )
+
+        # Re-segment by speaker. Words within one whisper segment can belong to
+        # different speakers, so split each segment on speaker change; a segment
+        # with no word timing falls back to its segment-level speaker label.
+        segments: list[dict] = []
+        for seg in final_result["segments"]:
+            seg_words = seg.get("words") or []
+            if seg_words:
+                segments.extend(_split_words_by_speaker(seg_words))
+            else:
+                segments.append(
+                    {
+                        "speaker": seg.get("speaker", DEFAULT_SPEAKER),
+                        "text": seg["text"].strip(),
+                        "start": seg["start"],
+                        "end": seg["end"],
+                    }
+                )
 
         language = final_result.get("language") or self.settings.LANGUAGE
         real_speakers = {

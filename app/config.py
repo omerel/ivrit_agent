@@ -21,7 +21,14 @@ class Settings(BaseSettings):
     COMPUTE_TYPE: str = "int8"
     LANGUAGE: str = "he"
     DIARIZATION_CONFIG: str = "models/pyannote-diarization/config.yaml"
+    # Speaker-count hints for diarization. MIN_SPEAKERS is a floor used when the
+    # exact count is unknown; NUM_SPEAKERS pins the count exactly (set it when you
+    # know how many speakers a recording has — similar-sounding voices otherwise
+    # cluster into fewer speakers than are present); MAX_SPEAKERS caps the count.
+    # A per-request form field overrides any of these.
     MIN_SPEAKERS: int = 2
+    MAX_SPEAKERS: int | None = None
+    NUM_SPEAKERS: int | None = None
     BATCH_SIZE: int = 4
     MAX_UPLOAD_BYTES: int = 26_214_400  # 25 MiB
     HOST: str = "0.0.0.0"
