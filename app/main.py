@@ -17,8 +17,14 @@ from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.chat import ChatCompletionClient, build_transcript_text
 from app.config import REPO_ROOT, settings
-from app.schemas import Segment, TranscriptionResponse
+from app.schemas import (
+    Segment,
+    SummarizeRequest,
+    SummarizeResponse,
+    TranscriptionResponse,
+)
 from app.transcription import TranscriptionPipeline
 
 logging.basicConfig(level=logging.INFO)
@@ -69,10 +75,12 @@ async def lifespan(app: FastAPI):
     pipeline = TranscriptionPipeline(settings)
     pipeline.load()  # the single expensive load (logs "Models loaded")
     app.state.pipeline = pipeline
+    app.state.chat = ChatCompletionClient(settings)  # cheap; no model load
     try:
         yield
     finally:
         app.state.pipeline = None
+        app.state.chat = None
 
 
 # Static UI assets live in the app/ package. Resolve package-relative (NOT CWD)
@@ -139,3 +147,25 @@ async def transcribe(
             os.unlink(tmp.name)  # ALWAYS delete the temp file
         except OSError:
             pass
+
+
+# Sync def on purpose: the chat client may make a blocking HTTP request, so
+# FastAPI runs this in a threadpool instead of blocking the event loop.
+@app.post("/summarize", response_model=SummarizeResponse)
+def summarize(request: Request, payload: SummarizeRequest):
+    instruction = payload.instruction.strip()
+    if not instruction:
+        raise HTTPException(status_code=400, detail="Empty instruction.")
+
+    segments = [s.model_dump() for s in payload.transcription.segments]
+    transcript_text = build_transcript_text(segments)
+    if not transcript_text:
+        raise HTTPException(status_code=400, detail="Empty transcription.")
+
+    try:
+        answer, model = request.app.state.chat.complete(instruction, transcript_text)
+    except Exception as exc:  # chat backend / network failure
+        logger.exception("Summarization failed")
+        raise HTTPException(status_code=502, detail="Summarization failed.") from exc
+
+    return SummarizeResponse(answer=answer, model=model)

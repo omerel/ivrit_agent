@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     NUM_SPEAKERS: int | None = None
     BATCH_SIZE: int = 4
     MAX_UPLOAD_BYTES: int = 26_214_400  # 25 MiB
+    # Chat-completion backend for /summarize. Leave CHAT_API_URL empty to use a
+    # built-in dummy responder (no network); set it to an OpenAI-compatible
+    # /chat/completions URL (+ CHAT_API_KEY, CHAT_MODEL) to use a real model.
+    CHAT_API_URL: str = ""
+    CHAT_API_KEY: str = ""
+    CHAT_MODEL: str = "gpt-4o-mini"
+    CHAT_TIMEOUT: float = 30.0
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     HF_HUB_OFFLINE: str = "1"

@@ -29,11 +29,85 @@ class FakePipeline:
         return self._result
 
 
-def make_client(pipeline):
+class FakeChat:
+    """Stand-in for ChatCompletionClient — records what it was asked."""
+
+    def __init__(self, answer="ANSWER", model="dummy", raises=None):
+        self._answer, self._model, self._raises = answer, model, raises
+        self.calls = []
+
+    def complete(self, instruction, transcript_text):
+        self.calls.append((instruction, transcript_text))
+        if self._raises:
+            raise self._raises
+        return self._answer, self._model
+
+
+def make_client(pipeline, chat=None):
     """Build a TestClient without triggering the real lifespan/model load."""
     client = TestClient(main.app)
     client.app.state.pipeline = pipeline
+    client.app.state.chat = chat if chat is not None else FakeChat()
     return client
+
+
+_SAMPLE_TRANSCRIPTION = {
+    "segments": [
+        {"speaker": "SPEAKER_00", "text": "שלום", "start": 0.0, "end": 1.0},
+        {"speaker": "SPEAKER_01", "text": "מה נשמע", "start": 1.0, "end": 2.0},
+    ],
+    "language": "he",
+    "num_speakers": 2,
+}
+
+
+def test_summarize_returns_answer():
+    chat = FakeChat(answer="סיכום", model="dummy")
+    client = make_client(FakePipeline(), chat=chat)
+    resp = client.post(
+        "/summarize",
+        json={"instruction": "סכם", "transcription": _SAMPLE_TRANSCRIPTION},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body == {"answer": "סיכום", "model": "dummy"}
+    # The transcript reached the chat client as flattened speaker lines.
+    instruction, transcript_text = chat.calls[-1]
+    assert instruction == "סכם"
+    assert "SPEAKER_00: שלום" in transcript_text
+
+
+def test_summarize_empty_instruction_400():
+    chat = FakeChat()
+    client = make_client(FakePipeline(), chat=chat)
+    resp = client.post(
+        "/summarize",
+        json={"instruction": "   ", "transcription": _SAMPLE_TRANSCRIPTION},
+    )
+    assert resp.status_code == 400
+    assert chat.calls == []  # never reached the chat client
+
+
+def test_summarize_empty_transcription_400():
+    chat = FakeChat()
+    client = make_client(FakePipeline(), chat=chat)
+    empty = {"segments": [], "language": "he", "num_speakers": None}
+    resp = client.post(
+        "/summarize", json={"instruction": "סכם", "transcription": empty}
+    )
+    assert resp.status_code == 400
+    assert chat.calls == []
+
+
+def test_summarize_chat_error_returns_502():
+    chat = FakeChat(raises=RuntimeError("boom"))
+    client = make_client(FakePipeline(), chat=chat)
+    resp = client.post(
+        "/summarize",
+        json={"instruction": "סכם", "transcription": _SAMPLE_TRANSCRIPTION},
+    )
+    assert resp.status_code == 502
+    assert "boom" not in resp.text  # internal error not leaked
 
 
 def test_health():
